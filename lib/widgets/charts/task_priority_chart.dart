@@ -207,3 +207,4 @@ class TaskPriorityChart extends StatelessWidget {
     );
   }
 }
+

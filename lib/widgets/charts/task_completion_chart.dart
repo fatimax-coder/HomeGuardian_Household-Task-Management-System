@@ -221,3 +221,4 @@ class TaskCompletionChart extends StatelessWidget {
     );
   }
 }
+

@@ -230,3 +230,4 @@ class ApplianceThumbnail extends StatelessWidget {
     );
   }
 }
+

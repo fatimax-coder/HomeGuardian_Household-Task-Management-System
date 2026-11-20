@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Singleton Pattern Implementation: SupabaseService
@@ -37,6 +38,7 @@ class SupabaseService {
     // Guard against unconfigured placeholder credentials during local dev / test
     if (url.contains('YOUR_SUPABASE') || publishableKey.contains('YOUR_SUPABASE')) {
       _isInitialized = false;
+      debugPrint('[SupabaseService] Awaiting active credentials. Running in local test mode.');
       return;
     }
 
@@ -47,7 +49,9 @@ class SupabaseService {
       );
       _client = Supabase.instance.client;
       _isInitialized = true;
-    } catch (_) {
+      debugPrint('[SupabaseService] Connected successfully to $url');
+    } catch (e) {
+      debugPrint('[SupabaseService] Initialization error: $e');
       _isInitialized = false;
     }
   }

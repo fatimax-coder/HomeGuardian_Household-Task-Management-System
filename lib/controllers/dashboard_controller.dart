@@ -39,3 +39,4 @@ class DashboardController extends BaseController implements AppDomainObserver {
     super.dispose();
   }
 }
+

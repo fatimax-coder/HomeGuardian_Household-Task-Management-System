@@ -34,3 +34,4 @@ class AppColors {
   static const Color surfaceAlt = Color(0xFFF3ECE1);
   static const Color borderLight = Color(0xFFE5D5C4);
 }
+

@@ -54,3 +54,4 @@ class ReminderRepository implements IReminderRepository {
     await _service.client.from('reminders').delete().eq('id', reminderId);
   }
 }
+

@@ -12,3 +12,4 @@ class HouseholdObserver implements AppDomainObserver {
     onEventReceived(event, payload);
   }
 }
+

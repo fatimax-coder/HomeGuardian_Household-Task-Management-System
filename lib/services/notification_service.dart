@@ -67,3 +67,4 @@ class NotificationService {
     await _notificationsPlugin.show(id, title, body, details);
   }
 }
+

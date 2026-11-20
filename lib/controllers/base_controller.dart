@@ -25,3 +25,4 @@ abstract class BaseController extends ChangeNotifier {
     notifyListeners();
   }
 }
+

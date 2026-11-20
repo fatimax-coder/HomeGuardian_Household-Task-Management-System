@@ -55,3 +55,4 @@ class SortByTitleStrategy implements TaskSortStrategy {
     return list;
   }
 }
+

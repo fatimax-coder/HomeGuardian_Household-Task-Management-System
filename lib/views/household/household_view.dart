@@ -47,3 +47,4 @@ class HouseholdView extends StatelessWidget {
     );
   }
 }
+

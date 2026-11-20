@@ -46,3 +46,4 @@ class ApplianceDetailView extends StatelessWidget {
     );
   }
 }
+

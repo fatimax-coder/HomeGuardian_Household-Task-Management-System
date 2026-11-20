@@ -18,7 +18,7 @@ Future<void> main() async {
   // Initialize Singleton Services
   await SupabaseService.instance.initialize(
     url: AppConstants.supabaseUrl,
-    publishableKey: AppConstants.supabaseAnonKey,
+    publishableKey: AppConstants.supabasePublishableKey,
   );
 
   await NotificationService.instance.initialize();

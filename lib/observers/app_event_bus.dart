@@ -47,3 +47,4 @@ class AppEventBus {
 
   int get observerCount => _observers.length;
 }
+

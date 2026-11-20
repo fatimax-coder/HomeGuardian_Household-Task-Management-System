@@ -64,3 +64,4 @@ class TaskRepository implements ITaskRepository {
     await _service.client.from('tasks').delete().eq('id', taskId);
   }
 }
+

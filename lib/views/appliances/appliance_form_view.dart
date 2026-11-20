@@ -379,3 +379,4 @@ class _ApplianceFormViewState extends State<ApplianceFormView> {
     );
   }
 }
+

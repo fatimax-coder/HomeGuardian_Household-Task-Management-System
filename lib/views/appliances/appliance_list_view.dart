@@ -5,6 +5,7 @@ import '../../config/app_routes.dart';
 import '../../controllers/appliance_controller.dart';
 import '../../controllers/household_controller.dart';
 import '../../models/appliance.dart';
+import '../../widgets/app_illustration.dart';
 import 'appliance_detail_view.dart';
 import 'appliance_form_view.dart';
 
@@ -118,8 +119,7 @@ class _ApplianceListViewState extends State<ApplianceListView> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.kitchen_outlined,
-                              size: 56, color: AppColors.sand),
+                          AppIllustration.emptyAppliances(size: 80),
                           const SizedBox(height: 12),
                           const Text(
                             'No Appliances Registered',
@@ -180,19 +180,11 @@ class _ApplianceListViewState extends State<ApplianceListView> {
                               padding: const EdgeInsets.all(16.0),
                               child: Row(
                                 children: [
-                                  // Icon Badge
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          AppColors.sand.withValues(alpha: 0.35),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.kitchen,
-                                      color: AppColors.terracotta,
-                                      size: 26,
-                                    ),
+                                  // Appliance Illustration Thumbnail
+                                  ApplianceThumbnail(
+                                    name: appliance.name,
+                                    brand: appliance.brand,
+                                    size: 58,
                                   ),
                                   const SizedBox(width: 14),
 

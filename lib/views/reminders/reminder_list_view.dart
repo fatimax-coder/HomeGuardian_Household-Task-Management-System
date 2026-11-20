@@ -7,6 +7,7 @@ import '../../controllers/reminder_controller.dart';
 import '../../factories/reminder_factory.dart';
 import '../../models/reminder.dart';
 import '../../strategies/reminder_filter_strategy.dart';
+import '../../widgets/app_illustration.dart';
 
 /// Screen: ReminderListView
 /// Displays reminders, handles Strategy filtering (Active, Urgent, Warranty),
@@ -348,8 +349,7 @@ class _ReminderListViewState extends State<ReminderListView> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.notifications_off_outlined,
-                                      size: 56, color: AppColors.sand),
+                                  AppIllustration.emptyReminders(size: 80),
                                   const SizedBox(height: 12),
                                   const Text(
                                     'No Reminders in This View',

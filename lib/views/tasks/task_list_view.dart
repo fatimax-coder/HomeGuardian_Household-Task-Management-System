@@ -6,6 +6,7 @@ import '../../controllers/household_controller.dart';
 import '../../controllers/task_controller.dart';
 import '../../models/task.dart';
 import '../../strategies/task_sort_strategy.dart';
+import '../../widgets/app_illustration.dart';
 import 'task_form_view.dart';
 
 /// Screen: TaskListView
@@ -132,6 +133,33 @@ class _TaskListViewState extends State<TaskListView> {
         );
       }
     }
+  }
+
+  IconData _getCategoryIcon(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('clean') ||
+        t.contains('sweep') ||
+        t.contains('mop') ||
+        t.contains('wash') ||
+        t.contains('dust')) {
+      return Icons.cleaning_services_outlined;
+    } else if (t.contains('cook') ||
+        t.contains('meal') ||
+        t.contains('kitchen') ||
+        t.contains('dish')) {
+      return Icons.soup_kitchen_outlined;
+    } else if (t.contains('buy') ||
+        t.contains('shop') ||
+        t.contains('grocery') ||
+        t.contains('market')) {
+      return Icons.shopping_bag_outlined;
+    } else if (t.contains('fix') ||
+        t.contains('repair') ||
+        t.contains('filter') ||
+        t.contains('service')) {
+      return Icons.build_outlined;
+    }
+    return Icons.task_alt;
   }
 
   Color _getPriorityColor(String priority) {
@@ -267,8 +295,7 @@ class _TaskListViewState extends State<TaskListView> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.checklist_rtl,
-                                      size: 56, color: AppColors.sand),
+                                  AppIllustration.emptyTasks(size: 80),
                                   const SizedBox(height: 12),
                                   Text(
                                     taskController.statusFilter == 'completed'
@@ -337,18 +364,49 @@ class _TaskListViewState extends State<TaskListView> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                task.title,
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: task.isCompleted
-                                                      ? AppColors.textMuted
-                                                      : AppColors.darkBrown,
-                                                  decoration: task.isCompleted
-                                                      ? TextDecoration.lineThrough
-                                                      : null,
-                                                ),
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.all(4),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.sand
+                                                          .withValues(
+                                                              alpha: 0.35),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                    ),
+                                                    child: Icon(
+                                                      _getCategoryIcon(
+                                                          task.title),
+                                                      size: 14,
+                                                      color:
+                                                          AppColors.terracotta,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      task.title,
+                                                      style: TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: task.isCompleted
+                                                            ? AppColors
+                                                                .textMuted
+                                                            : AppColors
+                                                                .darkBrown,
+                                                        decoration:
+                                                            task.isCompleted
+                                                                ? TextDecoration
+                                                                    .lineThrough
+                                                                : null,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                               if (task.description != null &&
                                                   task.description!.isNotEmpty) ...[

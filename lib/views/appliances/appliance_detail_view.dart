@@ -6,6 +6,7 @@ import '../../controllers/household_controller.dart';
 import '../../controllers/reminder_controller.dart';
 import '../../factories/reminder_factory.dart';
 import '../../models/appliance.dart';
+import '../../widgets/app_illustration.dart';
 import 'appliance_form_view.dart';
 import 'maintenance_form_view.dart';
 
@@ -164,14 +165,10 @@ class _ApplianceDetailViewState extends State<ApplianceDetailView> {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.sand.withValues(alpha: 0.4),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.verified_user_outlined,
-                                  color: AppColors.terracotta, size: 28),
+                            ApplianceThumbnail(
+                              name: appliance.name,
+                              brand: appliance.brand,
+                              size: 68,
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -307,8 +304,7 @@ class _ApplianceDetailViewState extends State<ApplianceDetailView> {
                       padding: const EdgeInsets.all(24.0),
                       child: Column(
                         children: [
-                          const Icon(Icons.build_outlined,
-                              size: 40, color: AppColors.sand),
+                          AppIllustration.maintenance(size: 60),
                           const SizedBox(height: 10),
                           const Text(
                             'No maintenance logged yet.',

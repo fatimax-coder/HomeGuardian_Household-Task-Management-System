@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_colors.dart';
 import '../../config/app_routes.dart';
 import '../../controllers/household_controller.dart';
+import '../../widgets/app_illustration.dart';
 
 /// Screen: HouseholdView
 /// Handles Household Onboarding (Create / Join) and Active Household Details
@@ -210,6 +211,12 @@ class _HouseholdViewState extends State<HouseholdView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 14.0),
+                              child: AppIllustration.family(size: 68),
+                            ),
+                          ),
                           Container(
                             decoration: BoxDecoration(
                               color: AppColors.background,
@@ -267,17 +274,9 @@ class _HouseholdViewState extends State<HouseholdView>
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.sand.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.home_work_outlined,
-                    color: AppColors.terracotta,
-                    size: 28,
-                  ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: AppIllustration.family(size: 54),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

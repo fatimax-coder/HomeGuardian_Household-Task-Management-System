@@ -8,11 +8,24 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/household_controller.dart';
 import '../../controllers/reminder_controller.dart';
 import '../../controllers/task_controller.dart';
+import '../../models/reminder.dart';
+import '../../widgets/app_illustration.dart';
+import '../../widgets/charts/maintenance_expense_chart.dart';
+import '../../widgets/charts/task_completion_chart.dart';
+import '../../widgets/charts/task_priority_chart.dart';
 import '../appliances/appliance_form_view.dart';
 import '../tasks/task_form_view.dart';
 
 /// Screen: DashboardView
-/// Central operational hub featuring key household metrics, quick task toggles, and shortcut actions
+/// Structured according to Section 5 Dashboard Layout:
+/// 1. Welcome section with attractive home illustration.
+/// 2. Household name and user role.
+/// 3. Quick statistics cards.
+/// 4. Task completion chart.
+/// 5. Task priority chart.
+/// 6. Upcoming reminders.
+/// 7. Recent tasks.
+/// 8. Household quick actions.
 class DashboardView extends StatefulWidget {
   final bool isTab;
   final ValueChanged<int>? onNavigateTab;
@@ -63,6 +76,32 @@ class _DashboardViewState extends State<DashboardView> {
     }
   }
 
+  IconData _getReminderIcon(ReminderType type) {
+    switch (type) {
+      case ReminderType.bill:
+        return Icons.receipt_long_outlined;
+      case ReminderType.maintenance:
+        return Icons.build_outlined;
+      case ReminderType.warranty:
+        return Icons.verified_user_outlined;
+      case ReminderType.task:
+        return Icons.task_alt;
+    }
+  }
+
+  Color _getReminderColor(ReminderType type) {
+    switch (type) {
+      case ReminderType.bill:
+        return AppColors.terracotta;
+      case ReminderType.maintenance:
+        return AppColors.brown;
+      case ReminderType.warranty:
+        return AppColors.success;
+      case ReminderType.task:
+        return AppColors.textSecondary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
@@ -73,6 +112,7 @@ class _DashboardViewState extends State<DashboardView> {
 
     final profile = authController.currentProfile;
     final household = householdController.selectedHousehold;
+    final activeReminders = reminderController.reminders;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -97,406 +137,640 @@ class _DashboardViewState extends State<DashboardView> {
         onRefresh: _refreshAllData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // User Greeting Banner
-              Card(
-                color: AppColors.sand,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(18.0),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: AppColors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.home_outlined,
-                          size: 28,
-                          color: AppColors.terracotta,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              profile != null
-                                  ? 'Welcome back, ${profile.fullName}!'
-                                  : 'Welcome to HomeGuardian',
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkBrown,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              household != null
-                                  ? 'Managing ${household.name} (${householdController.currentUserRole})'
-                                  : 'Smart Household Management & Maintenance',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Active Household Banner or Onboarding CTA
-              if (household == null) ...[
-                Card(
-                  color: AppColors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: AppColors.sand, width: 1.5),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.info_outline,
-                                color: AppColors.terracotta, size: 22),
-                            SizedBox(width: 8),
-                            Text(
-                              'No Household Connected',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkBrown,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Create your household or join your family using a 6-character invite code.',
-                          style: TextStyle(
-                              fontSize: 13, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.add_home_outlined, size: 18),
-                          label: const Text('Create or Join Household'),
-                          onPressed: () =>
-                              Navigator.pushNamed(context, AppRoutes.household),
-                        ),
-                      ],
+          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // -------------------------------------------------------------
+                  // 1. Welcome section with attractive home illustration
+                  // -------------------------------------------------------------
+                  Card(
+                    color: AppColors.white,
+                    elevation: 1.5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      side: const BorderSide(color: AppColors.sand, width: 1.2),
                     ),
-                  ),
-                ),
-              ] else ...[
-                Card(
-                  color: AppColors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: AppColors.sand, width: 1.2),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        AppIllustration.homeBanner(height: 125),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
                             children: [
-                              Text(
-                                household.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.darkBrown,
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.sand,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.waving_hand_outlined,
+                                  size: 24,
+                                  color: AppColors.terracotta,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Invite Code: ${household.inviteCode}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.terracotta,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      profile != null
+                                          ? 'Welcome back, ${profile.fullName}!'
+                                          : 'Welcome to HomeGuardian',
+                                      style: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.darkBrown,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'Smart Household Management & Maintenance System',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.copy,
-                              size: 18, color: AppColors.terracotta),
-                          tooltip: 'Copy Invite Code',
-                          onPressed: () {
-                            Clipboard.setData(
-                                ClipboardData(text: household.inviteCode));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Invite code copied to clipboard!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.people_outline,
-                              color: AppColors.brown),
-                          tooltip: 'View Members',
-                          onPressed: () =>
-                              Navigator.pushNamed(context, AppRoutes.members),
-                        ),
                       ],
                     ),
                   ),
-                ),
-              ],
-              const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-              // Operational Metrics Grid (2x2)
-              const Text(
-                'Household Overview',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkBrown,
-                ),
-              ),
-              const SizedBox(height: 12),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.35,
-                children: [
-                  _buildMetricCard(
-                    title: 'Pending Tasks',
-                    count: taskController.pendingTasksCount.toString(),
-                    subtitle: 'of ${taskController.totalTasksCount} total',
-                    icon: Icons.checklist_rtl,
-                    color: AppColors.terracotta,
-                    onTap: () => _navigateToTab(1, AppRoutes.tasks),
-                  ),
-                  _buildMetricCard(
-                    title: 'Appliances',
-                    count: applianceController.totalAppliancesCount.toString(),
-                    subtitle: 'Registered units',
-                    icon: Icons.kitchen_outlined,
-                    color: AppColors.brown,
-                    onTap: () => _navigateToTab(2, AppRoutes.appliances),
-                  ),
-                  _buildMetricCard(
-                    title: 'Expiring Warranties',
-                    count: applianceController.expiringWarrantiesCount.toString(),
-                    subtitle: 'Within 30 days',
-                    icon: Icons.verified_user_outlined,
-                    color: applianceController.expiringWarrantiesCount > 0
-                        ? AppColors.error
-                        : AppColors.success,
-                    onTap: () => _navigateToTab(2, AppRoutes.appliances),
-                  ),
-                  _buildMetricCard(
-                    title: 'Reminders',
-                    count: reminderController.activeCount.toString(),
-                    subtitle:
-                        '${reminderController.urgentCount} urgent alert${reminderController.urgentCount == 1 ? '' : 's'}',
-                    icon: Icons.notifications_active_outlined,
-                    color: reminderController.urgentCount > 0
-                        ? AppColors.error
-                        : AppColors.terracotta,
-                    onTap: () => _navigateToTab(3, AppRoutes.reminders),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              // Quick Actions Row
-              const Text(
-                'Quick Actions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkBrown,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildActionButton(
-                      icon: Icons.add_task,
-                      label: 'New Task',
-                      onPressed: () {
-                        if (household != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const TaskFormView()),
-                          );
-                        } else {
-                          Navigator.pushNamed(context, AppRoutes.household);
-                        }
-                      },
+                  // -------------------------------------------------------------
+                  // 2. Household name and user role
+                  // -------------------------------------------------------------
+                  if (household == null) ...[
+                    Card(
+                      color: AppColors.white,
+                      elevation: 1.2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: AppColors.sand, width: 1.2),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.sand.withValues(alpha: 0.4),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.info_outline,
+                                  color: AppColors.terracotta, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'No Household Connected',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.darkBrown,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  const Text(
+                                    'Create a household or join your family via invite code.',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                              ),
+                              onPressed: () => Navigator.pushNamed(
+                                  context, AppRoutes.household),
+                              child: const Text('Setup'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 10),
-                    _buildActionButton(
-                      icon: Icons.kitchen,
-                      label: 'Add Appliance',
-                      onPressed: () {
-                        if (household != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const ApplianceFormView()),
-                          );
-                        } else {
-                          Navigator.pushNamed(context, AppRoutes.household);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 10),
-                    _buildActionButton(
-                      icon: Icons.alarm_add,
-                      label: 'Reminders Hub',
-                      onPressed: () => _navigateToTab(3, AppRoutes.reminders),
-                    ),
-                    const SizedBox(width: 10),
-                    _buildActionButton(
-                      icon: Icons.group_add,
-                      label: 'Family Members',
-                      onPressed: () =>
-                          Navigator.pushNamed(context, AppRoutes.members),
+                  ] else ...[
+                    Card(
+                      color: AppColors.white,
+                      elevation: 1.2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: AppColors.sand, width: 1.2),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.sand.withValues(alpha: 0.35),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.home_work_outlined,
+                                color: AppColors.terracotta,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    household.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.darkBrown,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              householdController.isCurrentAdmin
+                                                  ? AppColors.terracotta
+                                                  : AppColors.sand,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          householdController.currentUserRole,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: householdController
+                                                    .isCurrentAdmin
+                                                ? AppColors.white
+                                                : AppColors.darkBrown,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Code: ${household.inviteCode}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          letterSpacing: 1.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.darkBrown,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy,
+                                  size: 18, color: AppColors.terracotta),
+                              tooltip: 'Copy Invite Code',
+                              onPressed: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: household.inviteCode));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Invite code copied!'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.people_outline,
+                                  size: 20, color: AppColors.brown),
+                              tooltip: 'Family Members',
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, AppRoutes.members),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                  const SizedBox(height: 18),
 
-              // Priority Household Tasks Preview
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                  // -------------------------------------------------------------
+                  // 3. Quick statistics cards
+                  // -------------------------------------------------------------
                   const Text(
-                    'Active Chores & Tasks',
+                    'Household Overview',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.darkBrown,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => _navigateToTab(1, AppRoutes.tasks),
-                    child: const Text('View All'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Tasks preview list
-              if (taskController.tasks.isEmpty) ...[
-                Card(
-                  color: AppColors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Center(
-                      child: Text(
-                        household == null
-                            ? 'Connect to a household to view chores.'
-                            : 'All caught up! No active tasks.',
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.textSecondary),
+                  const SizedBox(height: 10),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.35,
+                    children: [
+                      _buildMetricCard(
+                        title: 'Pending Tasks',
+                        count: taskController.pendingTasksCount.toString(),
+                        subtitle: 'of ${taskController.totalTasksCount} total',
+                        icon: Icons.checklist_rtl,
+                        color: AppColors.terracotta,
+                        onTap: () => _navigateToTab(1, AppRoutes.tasks),
                       ),
-                    ),
+                      _buildMetricCard(
+                        title: 'Appliances',
+                        count:
+                            applianceController.totalAppliancesCount.toString(),
+                        subtitle: 'Registered units',
+                        icon: Icons.kitchen_outlined,
+                        color: AppColors.brown,
+                        onTap: () => _navigateToTab(2, AppRoutes.appliances),
+                      ),
+                      _buildMetricCard(
+                        title: 'Expiring Warranties',
+                        count: applianceController.expiringWarrantiesCount
+                            .toString(),
+                        subtitle: 'Within 30 days',
+                        icon: Icons.verified_user_outlined,
+                        color: applianceController.expiringWarrantiesCount > 0
+                            ? AppColors.error
+                            : AppColors.success,
+                        onTap: () => _navigateToTab(2, AppRoutes.appliances),
+                      ),
+                      _buildMetricCard(
+                        title: 'Active Reminders',
+                        count: reminderController.activeCount.toString(),
+                        subtitle:
+                            '${reminderController.urgentCount} urgent alert${reminderController.urgentCount == 1 ? '' : 's'}',
+                        icon: Icons.notifications_active_outlined,
+                        color: reminderController.urgentCount > 0
+                            ? AppColors.error
+                            : AppColors.terracotta,
+                        onTap: () => _navigateToTab(3, AppRoutes.reminders),
+                      ),
+                    ],
                   ),
-                ),
-              ] else ...[
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: taskController.tasks.take(3).length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final task = taskController.tasks[index];
-                    return Card(
+                  const SizedBox(height: 18),
+
+                  // -------------------------------------------------------------
+                  // 4. Task completion chart
+                  // -------------------------------------------------------------
+                  TaskCompletionChart(taskController: taskController),
+                  const SizedBox(height: 16),
+
+                  // -------------------------------------------------------------
+                  // 5. Task priority chart & Maintenance expense chart
+                  // -------------------------------------------------------------
+                  TaskPriorityChart(taskController: taskController),
+                  const SizedBox(height: 16),
+                  MaintenanceExpenseChart(
+                      applianceController: applianceController),
+                  const SizedBox(height: 18),
+
+                  // -------------------------------------------------------------
+                  // 6. Upcoming reminders
+                  // -------------------------------------------------------------
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Upcoming Reminders',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkBrown,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            _navigateToTab(3, AppRoutes.reminders),
+                        child: const Text('View All'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  if (activeReminders.isEmpty) ...[
+                    Card(
                       color: AppColors.white,
+                      elevation: 1,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         side: const BorderSide(color: AppColors.sand),
                       ),
-                      child: ListTile(
-                        dense: true,
-                        leading: Checkbox(
-                          activeColor: AppColors.terracotta,
-                          value: task.isCompleted,
-                          onChanged: (val) {
-                            taskController.toggleTaskStatus(
-                              task.id,
-                              val ?? false,
-                            );
-                          },
-                        ),
-                        title: Text(
-                          task.title,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            decoration:
-                                task.isCompleted ? TextDecoration.lineThrough : null,
-                            color: task.isCompleted
-                                ? AppColors.textMuted
-                                : AppColors.darkBrown,
-                          ),
-                        ),
-                        subtitle: task.dueDate != null
-                            ? Text(
-                                'Due: ${task.dueDate!.year}-${task.dueDate!.month.toString().padLeft(2, '0')}-${task.dueDate!.day.toString().padLeft(2, '0')}',
+                      child: Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: Row(
+                          children: [
+                            AppIllustration.emptyReminders(size: 40),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Text(
+                                'No upcoming reminders. All bills and service alerts are clear!',
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  color: task.isOverdue
-                                      ? AppColors.error
-                                      : AppColors.textSecondary,
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
                                 ),
-                              )
-                            : null,
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.sand.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            task.priority.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.brown,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                ),
-              ],
-            ],
+                    ),
+                  ] else ...[
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: activeReminders.take(3).length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final rem = activeReminders[index];
+                        final remColor = _getReminderColor(rem.type);
+                        final isOverdue = rem.isOverdue && !rem.isDismissed;
+
+                        return Card(
+                          color: AppColors.white,
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isOverdue
+                                  ? AppColors.error.withValues(alpha: 0.6)
+                                  : AppColors.sand,
+                            ),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: remColor.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _getReminderIcon(rem.type),
+                                color: remColor,
+                                size: 18,
+                              ),
+                            ),
+                            title: Text(
+                              rem.title,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkBrown,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Due: ${rem.reminderDate.year}-${rem.reminderDate.month.toString().padLeft(2, '0')}-${rem.reminderDate.day.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isOverdue
+                                    ? AppColors.error
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            trailing: isOverdue
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'OVERDUE',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+
+                  // -------------------------------------------------------------
+                  // 7. Recent tasks
+                  // -------------------------------------------------------------
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Active Chores & Tasks',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkBrown,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _navigateToTab(1, AppRoutes.tasks),
+                        child: const Text('View All'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  if (taskController.tasks.isEmpty) ...[
+                    Card(
+                      color: AppColors.white,
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: AppColors.sand),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: Row(
+                          children: [
+                            AppIllustration.emptyTasks(size: 40),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Text(
+                                'All caught up! No pending chores right now.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: taskController.tasks.take(3).length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final task = taskController.tasks[index];
+                        return Card(
+                          color: AppColors.white,
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: AppColors.sand),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            leading: Checkbox(
+                              activeColor: AppColors.terracotta,
+                              value: task.isCompleted,
+                              onChanged: (val) {
+                                taskController.toggleTaskStatus(
+                                  task.id,
+                                  val ?? false,
+                                );
+                              },
+                            ),
+                            title: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                decoration: task.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color: task.isCompleted
+                                    ? AppColors.textMuted
+                                    : AppColors.darkBrown,
+                              ),
+                            ),
+                            subtitle: task.dueDate != null
+                                ? Text(
+                                    'Due: ${task.dueDate!.year}-${task.dueDate!.month.toString().padLeft(2, '0')}-${task.dueDate!.day.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: task.isOverdue
+                                          ? AppColors.error
+                                          : AppColors.textSecondary,
+                                    ),
+                                  )
+                                : null,
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.sand.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                task.priority.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.brown,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+
+                  // -------------------------------------------------------------
+                  // 8. Household quick actions
+                  // -------------------------------------------------------------
+                  const Text(
+                    'Household Quick Actions',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.darkBrown,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildActionButton(
+                          icon: Icons.add_task,
+                          label: 'New Task',
+                          onPressed: () {
+                            if (household != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const TaskFormView()),
+                              );
+                            } else {
+                              Navigator.pushNamed(context, AppRoutes.household);
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        _buildActionButton(
+                          icon: Icons.kitchen,
+                          label: 'Add Appliance',
+                          onPressed: () {
+                            if (household != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const ApplianceFormView()),
+                              );
+                            } else {
+                              Navigator.pushNamed(context, AppRoutes.household);
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        _buildActionButton(
+                          icon: Icons.alarm_add,
+                          label: 'Set Reminder',
+                          onPressed: () =>
+                              _navigateToTab(3, AppRoutes.reminders),
+                        ),
+                        const SizedBox(width: 10),
+                        _buildActionButton(
+                          icon: Icons.group_add,
+                          label: 'Family Members',
+                          onPressed: () =>
+                              Navigator.pushNamed(context, AppRoutes.members),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -513,6 +787,7 @@ class _DashboardViewState extends State<DashboardView> {
   }) {
     return Card(
       color: AppColors.white,
+      elevation: 1.2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: AppColors.sand, width: 1.2),

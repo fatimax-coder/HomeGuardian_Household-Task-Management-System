@@ -24,6 +24,40 @@ class ApplianceController extends BaseController {
   List<MaintenanceRecord> getRecords(String applianceId) =>
       _recordsByAppliance[applianceId] ?? [];
 
+  List<MaintenanceRecord> get allMaintenanceRecords =>
+      _recordsByAppliance.values.expand((records) => records).toList();
+
+  bool get hasMaintenanceRecords => allMaintenanceRecords.isNotEmpty;
+
+  double get totalMaintenanceCost =>
+      allMaintenanceRecords.fold(0.0, (sum, r) => sum + r.cost);
+
+  /// Computes real monthly maintenance expenses for past 6 months
+  Map<String, double> get monthlyExpenses {
+    final now = DateTime.now();
+    final Map<String, double> monthTotals = {};
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    for (int i = 5; i >= 0; i--) {
+      final d = DateTime(now.year, now.month - i, 1);
+      final key = '${monthNames[d.month - 1]} ${d.year.toString().substring(2)}';
+      monthTotals[key] = 0.0;
+    }
+
+    for (final r in allMaintenanceRecords) {
+      final key =
+          '${monthNames[r.serviceDate.month - 1]} ${r.serviceDate.year.toString().substring(2)}';
+      if (monthTotals.containsKey(key)) {
+        monthTotals[key] = (monthTotals[key] ?? 0.0) + r.cost;
+      }
+    }
+
+    return monthTotals;
+  }
+
   int get expiringWarrantiesCount =>
       _appliances.where((a) => a.isWarrantyActive && a.daysUntilWarrantyExpires <= 30).length;
 
@@ -37,11 +71,22 @@ class ApplianceController extends BaseController {
     try {
       _appliances = await _repository.getAppliances(householdId);
       clearError();
+      await fetchAllHouseholdMaintenance();
     } catch (e) {
       setError(e.toString());
     } finally {
       setLoading(false);
     }
+  }
+
+  Future<void> fetchAllHouseholdMaintenance() async {
+    for (final app in _appliances) {
+      try {
+        final records = await _repository.getMaintenanceRecords(app.id);
+        _recordsByAppliance[app.id] = records;
+      } catch (_) {}
+    }
+    notifyListeners();
   }
 
   Future<bool> addAppliance(Appliance appliance) async {

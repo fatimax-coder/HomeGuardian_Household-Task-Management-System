@@ -37,10 +37,22 @@ class TaskController extends BaseController {
   int get totalTasksCount => _tasks.length;
 
   int get pendingTasksCount =>
-      _tasks.where((t) => !t.isCompleted).length;
+      _tasks.where((t) => t.status == 'pending').length;
+
+  int get inProgressTasksCount =>
+      _tasks.where((t) => t.status == 'in_progress').length;
 
   int get completedTasksCount =>
       _tasks.where((t) => t.isCompleted).length;
+
+  int get highPriorityCount =>
+      _tasks.where((t) => t.priority.toLowerCase() == 'high').length;
+
+  int get mediumPriorityCount =>
+      _tasks.where((t) => t.priority.toLowerCase() == 'medium').length;
+
+  int get lowPriorityCount =>
+      _tasks.where((t) => t.priority.toLowerCase() == 'low').length;
 
   void setStatusFilter(String filter) {
     _statusFilter = filter;

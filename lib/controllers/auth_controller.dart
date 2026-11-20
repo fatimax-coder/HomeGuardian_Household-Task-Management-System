@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_profile.dart';
 import '../repositories/auth_repository.dart';
 import 'base_controller.dart';
@@ -6,17 +8,52 @@ import 'base_controller.dart';
 class AuthController extends BaseController {
   final IAuthRepository _repository;
   UserProfile? _currentProfile;
+  StreamSubscription<AuthState>? _authSubscription;
+  String? _infoMessage;
 
   AuthController([IAuthRepository? repository])
-      : _repository = repository ?? AuthRepository();
+      : _repository = repository ?? AuthRepository() {
+    _initAuthListener();
+  }
 
   UserProfile? get currentProfile => _currentProfile;
   bool get isAuthenticated => _repository.isAuthenticated;
+  User? get currentUser => _repository.currentUser;
+  String? get infoMessage => _infoMessage;
+
+  void _initAuthListener() {
+    final stream = _repository.authStateChanges;
+    if (stream != null) {
+      _authSubscription = stream.listen((data) {
+        final AuthChangeEvent event = data.event;
+        if (event == AuthChangeEvent.signedIn) {
+          checkAuthStatus();
+        } else if (event == AuthChangeEvent.signedOut) {
+          _currentProfile = null;
+          notifyListeners();
+        }
+      });
+    }
+  }
+
+  void setInfoMessage(String? message) {
+    _infoMessage = message;
+    notifyListeners();
+  }
+
+  void clearInfoMessage() {
+    _infoMessage = null;
+    notifyListeners();
+  }
 
   Future<void> checkAuthStatus() async {
     setLoading(true);
     try {
-      _currentProfile = await _repository.getCurrentProfile();
+      if (_repository.isAuthenticated) {
+        _currentProfile = await _repository.getCurrentProfile();
+      } else {
+        _currentProfile = null;
+      }
       clearError();
     } catch (e) {
       setError(e.toString());
@@ -27,35 +64,54 @@ class AuthController extends BaseController {
 
   Future<bool> signIn(String email, String password) async {
     setLoading(true);
+    clearError();
+    clearInfoMessage();
     try {
       _currentProfile = await _repository.signIn(email: email, password: password);
       clearError();
       return true;
+    } on AuthException catch (e) {
+      setError(e.message);
+      return false;
     } catch (e) {
-      setError(e.toString());
+      setError(e.toString().replaceAll('Exception: ', ''));
       return false;
     } finally {
       setLoading(false);
     }
   }
 
-  Future<bool> signUp({
+  Future<SignUpResult?> signUp({
     required String email,
     required String password,
     required String fullName,
   }) async {
     setLoading(true);
+    clearError();
+    clearInfoMessage();
     try {
-      _currentProfile = await _repository.signUp(
+      final result = await _repository.signUp(
         email: email,
         password: password,
         fullName: fullName,
       );
+
+      if (!result.requiresEmailConfirmation && result.profile != null) {
+        _currentProfile = result.profile;
+      }
+
+      if (result.message != null) {
+        setInfoMessage(result.message);
+      }
+
       clearError();
-      return true;
+      return result;
+    } on AuthException catch (e) {
+      setError(e.message);
+      return null;
     } catch (e) {
-      setError(e.toString());
-      return false;
+      setError(e.toString().replaceAll('Exception: ', ''));
+      return null;
     } finally {
       setLoading(false);
     }
@@ -67,11 +123,17 @@ class AuthController extends BaseController {
       await _repository.signOut();
       _currentProfile = null;
       clearError();
+      clearInfoMessage();
     } catch (e) {
       setError(e.toString());
     } finally {
       setLoading(false);
     }
   }
-}
 
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+}

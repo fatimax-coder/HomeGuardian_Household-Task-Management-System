@@ -535,3 +535,4 @@ CREATE POLICY "reminders_delete_policy"
     ON public.reminders FOR DELETE
     TO authenticated
     USING (public.is_household_member(household_id));
+

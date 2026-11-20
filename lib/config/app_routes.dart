@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../views/auth/auth_gate.dart';
 import '../views/auth/login_view.dart';
 import '../views/auth/signup_view.dart';
 import '../views/dashboard/dashboard_view.dart';
@@ -27,7 +28,7 @@ class AppRoutes {
   static const String members = '/members';
 
   static Map<String, WidgetBuilder> get routes => {
-        initial: (context) => const DashboardView(),
+        initial: (context) => const AuthGate(),
         login: (context) => const LoginView(),
         signup: (context) => const SignupView(),
         dashboard: (context) => const DashboardView(),

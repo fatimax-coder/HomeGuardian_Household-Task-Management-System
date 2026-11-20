@@ -42,14 +42,25 @@ class SupabaseService {
       return;
     }
 
+    // Clean URL: strip trailing /rest/v1 or slashes to ensure standard Supabase root endpoint
+    String cleanUrl = url.trim();
+    if (cleanUrl.endsWith('/rest/v1/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 9);
+    } else if (cleanUrl.endsWith('/rest/v1')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 8);
+    }
+    if (cleanUrl.endsWith('/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+    }
+
     try {
       await Supabase.initialize(
-        url: url,
+        url: cleanUrl,
         publishableKey: publishableKey,
       );
       _client = Supabase.instance.client;
       _isInitialized = true;
-      debugPrint('[SupabaseService] Connected successfully to $url');
+      debugPrint('[SupabaseService] Connected successfully to $cleanUrl');
     } catch (e) {
       debugPrint('[SupabaseService] Initialization error: $e');
       _isInitialized = false;

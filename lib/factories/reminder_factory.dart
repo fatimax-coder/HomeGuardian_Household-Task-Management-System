@@ -11,24 +11,28 @@ class ReminderFactory {
     required String householdId,
     required ReminderType type,
     required String title,
-    required DateTime dueDate,
+    required DateTime reminderDate,
+    String? applianceId,
+    String? taskId,
+    String? description,
     String? relatedId,
   }) {
     String formattedTitle = title.trim();
 
     switch (type) {
       case ReminderType.warranty:
-        if (!formattedTitle.startsWith('Warranty:')) {
+        if (!formattedTitle.toLowerCase().startsWith('warranty')) {
           formattedTitle = 'Warranty Alert: $formattedTitle';
         }
         break;
       case ReminderType.maintenance:
-        if (!formattedTitle.startsWith('Service:')) {
+        if (!formattedTitle.toLowerCase().startsWith('service') &&
+            !formattedTitle.toLowerCase().startsWith('maintenance')) {
           formattedTitle = 'Scheduled Service: $formattedTitle';
         }
         break;
       case ReminderType.bill:
-        if (!formattedTitle.startsWith('Bill:')) {
+        if (!formattedTitle.toLowerCase().startsWith('bill')) {
           formattedTitle = 'Bill Due: $formattedTitle';
         }
         break;
@@ -40,11 +44,13 @@ class ReminderFactory {
     return Reminder(
       id: '',
       householdId: householdId,
+      applianceId: applianceId ?? relatedId,
+      taskId: taskId,
       title: formattedTitle,
+      description: description,
       type: type,
-      dueDate: dueDate,
+      reminderDate: reminderDate,
       isDismissed: false,
-      relatedId: relatedId,
       createdAt: DateTime.now(),
     );
   }
@@ -60,8 +66,9 @@ class ReminderFactory {
       householdId: householdId,
       type: ReminderType.warranty,
       title: applianceName,
-      dueDate: warrantyExpiryDate,
-      relatedId: applianceId,
+      reminderDate: warrantyExpiryDate,
+      applianceId: applianceId,
+      description: 'Warranty for $applianceName expires soon.',
     );
   }
 
@@ -71,14 +78,15 @@ class ReminderFactory {
     required String applianceName,
     required DateTime serviceDate,
     required String applianceId,
+    String? notes,
   }) {
     return create(
       householdId: householdId,
       type: ReminderType.maintenance,
       title: applianceName,
-      dueDate: serviceDate,
-      relatedId: applianceId,
+      reminderDate: serviceDate,
+      applianceId: applianceId,
+      description: notes ?? 'Scheduled maintenance service for $applianceName.',
     );
   }
 }
-

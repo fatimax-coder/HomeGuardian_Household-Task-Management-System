@@ -4,25 +4,36 @@ class Appliance {
   final String householdId;
   final String name;
   final String? brand;
-  final String? modelNumber;
+  final String? model;
   final DateTime? purchaseDate;
-  final double? purchasePrice;
-  final DateTime? warrantyExpiryDate;
-  final String? notes;
+  final int warrantyMonths;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Appliance({
     required this.id,
     required this.householdId,
     required this.name,
     this.brand,
-    this.modelNumber,
+    this.model,
     this.purchaseDate,
-    this.purchasePrice,
-    this.warrantyExpiryDate,
-    this.notes,
+    this.warrantyMonths = 12,
     this.createdAt,
+    this.updatedAt,
   });
+
+  /// Alias for backwards compatibility
+  String? get modelNumber => model;
+
+  /// Computed warranty expiry date from purchase date and warranty months
+  DateTime? get warrantyExpiryDate {
+    if (purchaseDate == null) return null;
+    return DateTime(
+      purchaseDate!.year,
+      purchaseDate!.month + warrantyMonths,
+      purchaseDate!.day,
+    );
+  }
 
   /// Warranty status checks
   bool get isWarrantyActive {
@@ -45,23 +56,20 @@ class Appliance {
 
   factory Appliance.fromJson(Map<String, dynamic> json) {
     return Appliance(
-      id: json['id'] as String,
-      householdId: json['household_id'] as String,
+      id: json['id'] as String? ?? '',
+      householdId: json['household_id'] as String? ?? '',
       name: json['name'] as String? ?? 'Unnamed Appliance',
       brand: json['brand'] as String?,
-      modelNumber: json['model_number'] as String?,
+      model: json['model'] as String? ?? json['model_number'] as String?,
       purchaseDate: json['purchase_date'] != null
           ? DateTime.tryParse(json['purchase_date'] as String)
           : null,
-      purchasePrice: json['purchase_price'] != null
-          ? (json['purchase_price'] as num).toDouble()
-          : null,
-      warrantyExpiryDate: json['warranty_expiry_date'] != null
-          ? DateTime.tryParse(json['warranty_expiry_date'] as String)
-          : null,
-      notes: json['notes'] as String?,
+      warrantyMonths: json['warranty_months'] as int? ?? 12,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
     );
   }
@@ -72,14 +80,10 @@ class Appliance {
       'household_id': householdId,
       'name': name,
       if (brand != null) 'brand': brand,
-      if (modelNumber != null) 'model_number': modelNumber,
+      if (model != null) 'model': model,
       if (purchaseDate != null)
         'purchase_date': purchaseDate!.toIso8601String().split('T').first,
-      if (purchasePrice != null) 'purchase_price': purchasePrice,
-      if (warrantyExpiryDate != null)
-        'warranty_expiry_date':
-            warrantyExpiryDate!.toIso8601String().split('T').first,
-      if (notes != null) 'notes': notes,
+      'warranty_months': warrantyMonths,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }
@@ -89,25 +93,29 @@ class Appliance {
     String? householdId,
     String? name,
     String? brand,
+    String? model,
     String? modelNumber,
     DateTime? purchaseDate,
-    double? purchasePrice,
+    int? warrantyMonths,
     DateTime? warrantyExpiryDate,
-    String? notes,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
+    int calculatedMonths = warrantyMonths ?? this.warrantyMonths;
+    if (warrantyExpiryDate != null && purchaseDate != null) {
+      calculatedMonths = ((warrantyExpiryDate.difference(purchaseDate).inDays) / 30).round();
+    }
+
     return Appliance(
       id: id ?? this.id,
       householdId: householdId ?? this.householdId,
       name: name ?? this.name,
       brand: brand ?? this.brand,
-      modelNumber: modelNumber ?? this.modelNumber,
+      model: model ?? modelNumber ?? this.model,
       purchaseDate: purchaseDate ?? this.purchaseDate,
-      purchasePrice: purchasePrice ?? this.purchasePrice,
-      warrantyExpiryDate: warrantyExpiryDate ?? this.warrantyExpiryDate,
-      notes: notes ?? this.notes,
+      warrantyMonths: calculatedMonths,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
-

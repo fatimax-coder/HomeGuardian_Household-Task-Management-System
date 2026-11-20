@@ -19,6 +19,7 @@ class AuthController extends BaseController {
   UserProfile? get currentProfile => _currentProfile;
   bool get isAuthenticated => _repository.isAuthenticated;
   User? get currentUser => _repository.currentUser;
+  String? get currentUserEmail => _repository.currentUser?.email;
   String? get infoMessage => _infoMessage;
 
   void _initAuthListener() {

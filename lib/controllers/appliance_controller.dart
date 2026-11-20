@@ -9,6 +9,7 @@ class ApplianceController extends BaseController {
   final IApplianceRepository _repository;
 
   List<Appliance> _appliances = [];
+  Appliance? _selectedAppliance;
   final Map<String, List<MaintenanceRecord>> _recordsByAppliance = {};
 
   ApplianceController([IApplianceRepository? repository])
@@ -16,11 +17,20 @@ class ApplianceController extends BaseController {
 
   List<Appliance> get appliances => _appliances;
 
+  Appliance? get selectedAppliance => _selectedAppliance;
+
+  int get totalAppliancesCount => _appliances.length;
+
   List<MaintenanceRecord> getRecords(String applianceId) =>
       _recordsByAppliance[applianceId] ?? [];
 
   int get expiringWarrantiesCount =>
       _appliances.where((a) => a.isWarrantyActive && a.daysUntilWarrantyExpires <= 30).length;
+
+  void selectAppliance(Appliance? appliance) {
+    _selectedAppliance = appliance;
+    notifyListeners();
+  }
 
   Future<void> fetchAppliances(String householdId) async {
     setLoading(true);
@@ -40,6 +50,46 @@ class ApplianceController extends BaseController {
       final created = await _repository.createAppliance(appliance);
       _appliances.add(created);
       AppEventBus.instance.notify(AppEventType.applianceCreated, created);
+      clearError();
+      return true;
+    } catch (e) {
+      setError(e.toString());
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<bool> updateAppliance(Appliance appliance) async {
+    setLoading(true);
+    try {
+      await _repository.updateAppliance(appliance);
+      final index = _appliances.indexWhere((a) => a.id == appliance.id);
+      if (index != -1) {
+        _appliances[index] = appliance;
+      }
+      if (_selectedAppliance?.id == appliance.id) {
+        _selectedAppliance = appliance;
+      }
+      clearError();
+      return true;
+    } catch (e) {
+      setError(e.toString());
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<bool> deleteAppliance(String applianceId) async {
+    setLoading(true);
+    try {
+      await _repository.deleteAppliance(applianceId);
+      _appliances.removeWhere((a) => a.id == applianceId);
+      _recordsByAppliance.remove(applianceId);
+      if (_selectedAppliance?.id == applianceId) {
+        _selectedAppliance = null;
+      }
       clearError();
       return true;
     } catch (e) {

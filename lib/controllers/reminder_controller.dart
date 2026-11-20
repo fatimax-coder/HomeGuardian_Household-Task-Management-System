@@ -19,6 +19,13 @@ class ReminderController extends BaseController {
   /// Returns reminders filtered by the current Strategy
   List<Reminder> get reminders => _filterStrategy.filter(_reminders);
 
+  List<Reminder> get allRawReminders => List.unmodifiable(_reminders);
+
+  int get totalCount => _reminders.length;
+
+  int get activeCount =>
+      _reminders.where((r) => !r.isDismissed).length;
+
   int get urgentCount =>
       _reminders.where((r) => !r.isDismissed && r.isOverdue).length;
 
@@ -79,4 +86,3 @@ class ReminderController extends BaseController {
     }
   }
 }
-

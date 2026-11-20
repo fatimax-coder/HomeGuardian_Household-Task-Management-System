@@ -23,7 +23,7 @@ class ReminderRepository implements IReminderRepository {
         .from('reminders')
         .select()
         .eq('household_id', householdId)
-        .order('due_date');
+        .order('reminder_date', ascending: true);
 
     return (response as List)
         .map((item) => Reminder.fromJson(item as Map<String, dynamic>))
@@ -45,7 +45,10 @@ class ReminderRepository implements IReminderRepository {
   Future<void> dismissReminder(String reminderId) async {
     await _service.client
         .from('reminders')
-        .update({'is_dismissed': true})
+        .update({
+          'is_dismissed': true,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
         .eq('id', reminderId);
   }
 
@@ -54,4 +57,3 @@ class ReminderRepository implements IReminderRepository {
     await _service.client.from('reminders').delete().eq('id', reminderId);
   }
 }
-

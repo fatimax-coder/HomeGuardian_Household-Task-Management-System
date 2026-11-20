@@ -11,20 +11,41 @@ class TaskController extends BaseController {
 
   List<Task> _tasks = [];
   TaskSortStrategy _sortStrategy = SortByDueDateStrategy();
+  String _statusFilter = 'all'; // 'all', 'pending', 'completed'
 
   TaskController([ITaskRepository? repository])
       : _repository = repository ?? TaskRepository();
 
   TaskSortStrategy get sortStrategy => _sortStrategy;
+  String get statusFilter => _statusFilter;
 
   /// Returns tasks sorted according to the active Strategy
-  List<Task> get tasks => _sortStrategy.sort(_tasks);
+  List<Task> get tasks {
+    List<Task> filtered;
+    if (_statusFilter == 'pending') {
+      filtered = _tasks.where((t) => !t.isCompleted).toList();
+    } else if (_statusFilter == 'completed') {
+      filtered = _tasks.where((t) => t.isCompleted).toList();
+    } else {
+      filtered = List.from(_tasks);
+    }
+    return _sortStrategy.sort(filtered);
+  }
+
+  List<Task> get allRawTasks => List.unmodifiable(_tasks);
+
+  int get totalTasksCount => _tasks.length;
 
   int get pendingTasksCount =>
       _tasks.where((t) => !t.isCompleted).length;
 
   int get completedTasksCount =>
       _tasks.where((t) => t.isCompleted).length;
+
+  void setStatusFilter(String filter) {
+    _statusFilter = filter;
+    notifyListeners();
+  }
 
   /// Sets a new sorting strategy and triggers UI update
   void setSortStrategy(TaskSortStrategy strategy) {
@@ -50,6 +71,25 @@ class TaskController extends BaseController {
       final created = await _repository.createTask(task);
       _tasks.insert(0, created);
       AppEventBus.instance.notify(AppEventType.taskCreated, created);
+      clearError();
+      return true;
+    } catch (e) {
+      setError(e.toString());
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<bool> updateTask(Task task) async {
+    setLoading(true);
+    try {
+      await _repository.updateTask(task);
+      final index = _tasks.indexWhere((t) => t.id == task.id);
+      if (index != -1) {
+        _tasks[index] = task;
+        AppEventBus.instance.notify(AppEventType.taskUpdated, task);
+      }
       clearError();
       return true;
     } catch (e) {
@@ -90,4 +130,3 @@ class TaskController extends BaseController {
     }
   }
 }
-

@@ -83,4 +83,3 @@ class ApplianceRepository implements IApplianceRepository {
     return MaintenanceRecord.fromJson(response);
   }
 }
-

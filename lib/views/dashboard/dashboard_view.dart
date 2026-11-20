@@ -3,12 +3,25 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_colors.dart';
 import '../../config/app_routes.dart';
+import '../../controllers/appliance_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/household_controller.dart';
+import '../../controllers/reminder_controller.dart';
+import '../../controllers/task_controller.dart';
+import '../appliances/appliance_form_view.dart';
+import '../tasks/task_form_view.dart';
 
-/// Screen: DashboardView (Centralized Dashboard)
+/// Screen: DashboardView
+/// Central operational hub featuring key household metrics, quick task toggles, and shortcut actions
 class DashboardView extends StatefulWidget {
-  const DashboardView({super.key});
+  final bool isTab;
+  final ValueChanged<int>? onNavigateTab;
+
+  const DashboardView({
+    super.key,
+    this.isTab = false,
+    this.onNavigateTab,
+  });
 
   @override
   State<DashboardView> createState() => _DashboardViewState();
@@ -19,50 +32,34 @@ class _DashboardViewState extends State<DashboardView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthController>().checkAuthStatus();
-      context.read<HouseholdController>().fetchHouseholds();
+      _refreshAllData();
     });
   }
 
-  Future<void> _handleLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Sign Out',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.darkBrown,
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to sign out of HomeGuardian?',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _refreshAllData() async {
+    final auth = context.read<AuthController>();
+    final householdCtrl = context.read<HouseholdController>();
 
-    if (confirmed == true && mounted) {
-      await context.read<AuthController>().signOut();
-      if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.login,
-        (route) => false,
-      );
+    if (!auth.isAuthenticated) {
+      await auth.checkAuthStatus();
+    }
+    await householdCtrl.fetchHouseholds();
+
+    final activeHousehold = householdCtrl.selectedHousehold;
+    if (activeHousehold != null && mounted) {
+      await Future.wait([
+        context.read<TaskController>().fetchTasks(activeHousehold.id),
+        context.read<ApplianceController>().fetchAppliances(activeHousehold.id),
+        context.read<ReminderController>().fetchReminders(activeHousehold.id),
+      ]);
+    }
+  }
+
+  void _navigateToTab(int tabIndex, String routeFallback) {
+    if (widget.onNavigateTab != null) {
+      widget.onNavigateTab!(tabIndex);
+    } else {
+      Navigator.pushNamed(context, routeFallback);
     }
   }
 
@@ -70,36 +67,34 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
     final householdController = context.watch<HouseholdController>();
-    final currentProfile = authController.currentProfile;
-    final activeHousehold = householdController.selectedHousehold;
+    final taskController = context.watch<TaskController>();
+    final applianceController = context.watch<ApplianceController>();
+    final reminderController = context.watch<ReminderController>();
+
+    final profile = authController.currentProfile;
+    final household = householdController.selectedHousehold;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('HomeGuardian'),
+        automaticallyImplyLeading: !widget.isTab,
         actions: [
           IconButton(
             icon: const Icon(Icons.people_outline),
             tooltip: 'Household & Members',
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.household),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.members),
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_none),
-            tooltip: 'Reminders',
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.reminders),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.error),
-            tooltip: 'Sign Out',
-            onPressed: _handleLogout,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh All',
+            onPressed: _refreshAllData,
           ),
         ],
       ),
       body: RefreshIndicator(
         color: AppColors.terracotta,
-        onRefresh: () async {
-          await householdController.fetchHouseholds();
-        },
+        onRefresh: _refreshAllData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20.0),
@@ -109,8 +104,12 @@ class _DashboardViewState extends State<DashboardView> {
               // User Greeting Banner
               Card(
                 color: AppColors.sand,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.all(18.0),
                   child: Row(
                     children: [
                       Container(
@@ -121,7 +120,7 @@ class _DashboardViewState extends State<DashboardView> {
                         ),
                         child: const Icon(
                           Icons.home_outlined,
-                          size: 30,
+                          size: 28,
                           color: AppColors.terracotta,
                         ),
                       ),
@@ -131,21 +130,22 @@ class _DashboardViewState extends State<DashboardView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              currentProfile != null
-                                  ? 'Welcome, ${currentProfile.fullName}'
+                              profile != null
+                                  ? 'Welcome back, ${profile.fullName}!'
                                   : 'Welcome to HomeGuardian',
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 17,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.darkBrown,
                               ),
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              currentProfile?.email ??
-                                  'Smart Household Management',
+                              household != null
+                                  ? 'Managing ${household.name} (${householdController.currentUserRole})'
+                                  : 'Smart Household Management & Maintenance',
                               style: const TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
                             ),
@@ -156,10 +156,10 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
-              // Active Household Status or Onboarding Call-to-Action
-              if (activeHousehold == null) ...[
+              // Active Household Banner or Onboarding CTA
+              if (household == null) ...[
                 Card(
                   color: AppColors.white,
                   shape: RoundedRectangleBorder(
@@ -174,8 +174,8 @@ class _DashboardViewState extends State<DashboardView> {
                         const Row(
                           children: [
                             Icon(Icons.info_outline,
-                                color: AppColors.terracotta, size: 24),
-                            SizedBox(width: 10),
+                                color: AppColors.terracotta, size: 22),
+                            SizedBox(width: 8),
                             Text(
                               'No Household Connected',
                               style: TextStyle(
@@ -186,13 +186,11 @@ class _DashboardViewState extends State<DashboardView> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         const Text(
                           'Create your household or join your family using a 6-character invite code.',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                              fontSize: 13, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
@@ -210,97 +208,71 @@ class _DashboardViewState extends State<DashboardView> {
                   color: AppColors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: AppColors.sand, width: 1.5),
+                    side: const BorderSide(color: AppColors.sand, width: 1.2),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    activeHousehold.name,
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.darkBrown,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              householdController.isCurrentAdmin
-                                                  ? AppColors.terracotta
-                                                  : AppColors.sand,
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          householdController.currentUserRole,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: householdController
-                                                    .isCurrentAdmin
-                                                ? AppColors.white
-                                                : AppColors.darkBrown,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${householdController.totalMembersCount} member${householdController.totalMembersCount == 1 ? '' : 's'}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                household.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.darkBrown,
+                                ),
                               ),
-                            ),
-                            // Quick copy invite code button
-                            IconButton(
-                              icon: const Icon(Icons.share_outlined,
-                                  color: AppColors.terracotta),
-                              tooltip: 'Share Invite Code',
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(
-                                    text: activeHousehold.inviteCode));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Invite code (${activeHousehold.inviteCode}) copied to clipboard!'),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+                              const SizedBox(height: 2),
+                              Text(
+                                'Invite Code: ${household.inviteCode}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.terracotta,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy,
+                              size: 18, color: AppColors.terracotta),
+                          tooltip: 'Copy Invite Code',
+                          onPressed: () {
+                            Clipboard.setData(
+                                ClipboardData(text: household.inviteCode));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Invite code copied to clipboard!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.people_outline,
+                              color: AppColors.brown),
+                          tooltip: 'View Members',
+                          onPressed: () =>
+                              Navigator.pushNamed(context, AppRoutes.members),
                         ),
                       ],
                     ),
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Quick Navigation Hub
+              // Operational Metrics Grid (2x2)
               const Text(
-                'Quick Access',
+                'Household Overview',
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.darkBrown,
                 ),
@@ -310,37 +282,281 @@ class _DashboardViewState extends State<DashboardView> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisCount: 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: 1.25,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.35,
                 children: [
-                  _buildHubCard(
-                    context,
-                    title: 'Tasks',
-                    subtitle: 'Chores & deadlines',
-                    icon: Icons.check_circle_outline,
-                    route: AppRoutes.tasks,
+                  _buildMetricCard(
+                    title: 'Pending Tasks',
+                    count: taskController.pendingTasksCount.toString(),
+                    subtitle: 'of ${taskController.totalTasksCount} total',
+                    icon: Icons.checklist_rtl,
+                    color: AppColors.terracotta,
+                    onTap: () => _navigateToTab(1, AppRoutes.tasks),
                   ),
-                  _buildHubCard(
-                    context,
+                  _buildMetricCard(
                     title: 'Appliances',
-                    subtitle: 'Warranties & service',
+                    count: applianceController.totalAppliancesCount.toString(),
+                    subtitle: 'Registered units',
                     icon: Icons.kitchen_outlined,
-                    route: AppRoutes.appliances,
+                    color: AppColors.brown,
+                    onTap: () => _navigateToTab(2, AppRoutes.appliances),
                   ),
-                  _buildHubCard(
-                    context,
+                  _buildMetricCard(
+                    title: 'Expiring Warranties',
+                    count: applianceController.expiringWarrantiesCount.toString(),
+                    subtitle: 'Within 30 days',
+                    icon: Icons.verified_user_outlined,
+                    color: applianceController.expiringWarrantiesCount > 0
+                        ? AppColors.error
+                        : AppColors.success,
+                    onTap: () => _navigateToTab(2, AppRoutes.appliances),
+                  ),
+                  _buildMetricCard(
                     title: 'Reminders',
-                    subtitle: 'Bills & alerts',
-                    icon: Icons.alarm,
-                    route: AppRoutes.reminders,
+                    count: reminderController.activeCount.toString(),
+                    subtitle:
+                        '${reminderController.urgentCount} urgent alert${reminderController.urgentCount == 1 ? '' : 's'}',
+                    icon: Icons.notifications_active_outlined,
+                    color: reminderController.urgentCount > 0
+                        ? AppColors.error
+                        : AppColors.terracotta,
+                    onTap: () => _navigateToTab(3, AppRoutes.reminders),
                   ),
-                  _buildHubCard(
-                    context,
-                    title: 'Members',
-                    subtitle: 'Family & roles',
-                    icon: Icons.family_restroom,
-                    route: AppRoutes.members,
+                ],
+              ),
+              const SizedBox(height: 22),
+
+              // Quick Actions Row
+              const Text(
+                'Quick Actions',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkBrown,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildActionButton(
+                      icon: Icons.add_task,
+                      label: 'New Task',
+                      onPressed: () {
+                        if (household != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const TaskFormView()),
+                          );
+                        } else {
+                          Navigator.pushNamed(context, AppRoutes.household);
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _buildActionButton(
+                      icon: Icons.kitchen,
+                      label: 'Add Appliance',
+                      onPressed: () {
+                        if (household != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ApplianceFormView()),
+                          );
+                        } else {
+                          Navigator.pushNamed(context, AppRoutes.household);
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _buildActionButton(
+                      icon: Icons.alarm_add,
+                      label: 'Reminders Hub',
+                      onPressed: () => _navigateToTab(3, AppRoutes.reminders),
+                    ),
+                    const SizedBox(width: 10),
+                    _buildActionButton(
+                      icon: Icons.group_add,
+                      label: 'Family Members',
+                      onPressed: () =>
+                          Navigator.pushNamed(context, AppRoutes.members),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Priority Household Tasks Preview
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Active Chores & Tasks',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.darkBrown,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _navigateToTab(1, AppRoutes.tasks),
+                    child: const Text('View All'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Tasks preview list
+              if (taskController.tasks.isEmpty) ...[
+                Card(
+                  color: AppColors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Center(
+                      child: Text(
+                        household == null
+                            ? 'Connect to a household to view chores.'
+                            : 'All caught up! No active tasks.',
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: taskController.tasks.take(3).length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final task = taskController.tasks[index];
+                    return Card(
+                      color: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: AppColors.sand),
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        leading: Checkbox(
+                          activeColor: AppColors.terracotta,
+                          value: task.isCompleted,
+                          onChanged: (val) {
+                            taskController.toggleTaskStatus(
+                              task.id,
+                              val ?? false,
+                            );
+                          },
+                        ),
+                        title: Text(
+                          task.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            decoration:
+                                task.isCompleted ? TextDecoration.lineThrough : null,
+                            color: task.isCompleted
+                                ? AppColors.textMuted
+                                : AppColors.darkBrown,
+                          ),
+                        ),
+                        subtitle: task.dueDate != null
+                            ? Text(
+                                'Due: ${task.dueDate!.year}-${task.dueDate!.month.toString().padLeft(2, '0')}-${task.dueDate!.day.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: task.isOverdue
+                                      ? AppColors.error
+                                      : AppColors.textSecondary,
+                                ),
+                              )
+                            : null,
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.sand.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            task.priority.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.brown,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard({
+    required String title,
+    required String count,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      color: AppColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.sand, width: 1.2),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Icon(icon, size: 20, color: color),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    count,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -351,45 +567,23 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildHubCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
+  Widget _buildActionButton({
     required IconData icon,
-    required String route,
+    required String label,
+    required VoidCallback onPressed,
   }) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.pushNamed(context, route),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.terracotta, size: 28),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkBrown,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.white,
+        foregroundColor: AppColors.darkBrown,
+        elevation: 0,
+        side: const BorderSide(color: AppColors.sand, width: 1.2),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+      icon: Icon(icon, size: 18, color: AppColors.terracotta),
+      label: Text(label, style: const TextStyle(fontSize: 13)),
+      onPressed: onPressed,
     );
   }
 }

@@ -3,34 +3,36 @@ class MaintenanceRecord {
   final String id;
   final String applianceId;
   final DateTime serviceDate;
-  final String serviceType;
-  final String? serviceProvider;
+  final String description;
   final double cost;
-  final String? notes;
+  final String? serviceProvider;
   final DateTime? createdAt;
 
   MaintenanceRecord({
     required this.id,
     required this.applianceId,
     required this.serviceDate,
-    required this.serviceType,
-    this.serviceProvider,
+    required this.description,
     this.cost = 0.0,
-    this.notes,
+    this.serviceProvider,
     this.createdAt,
   });
 
+  /// Compatibility alias for serviceType
+  String get serviceType => description;
+
   factory MaintenanceRecord.fromJson(Map<String, dynamic> json) {
     return MaintenanceRecord(
-      id: json['id'] as String,
-      applianceId: json['appliance_id'] as String,
+      id: json['id'] as String? ?? '',
+      applianceId: json['appliance_id'] as String? ?? '',
       serviceDate: json['service_date'] != null
-          ? DateTime.parse(json['service_date'] as String)
+          ? DateTime.tryParse(json['service_date'] as String) ?? DateTime.now()
           : DateTime.now(),
-      serviceType: json['service_type'] as String? ?? 'General Maintenance',
-      serviceProvider: json['service_provider'] as String?,
+      description: json['description'] as String? ??
+          json['service_type'] as String? ??
+          'General Maintenance',
       cost: json['cost'] != null ? (json['cost'] as num).toDouble() : 0.0,
-      notes: json['notes'] as String?,
+      serviceProvider: json['service_provider'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -42,12 +44,31 @@ class MaintenanceRecord {
       if (id.isNotEmpty) 'id': id,
       'appliance_id': applianceId,
       'service_date': serviceDate.toIso8601String().split('T').first,
-      'service_type': serviceType,
-      if (serviceProvider != null) 'service_provider': serviceProvider,
+      'description': description,
       'cost': cost,
-      if (notes != null) 'notes': notes,
+      if (serviceProvider != null) 'service_provider': serviceProvider,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }
-}
 
+  MaintenanceRecord copyWith({
+    String? id,
+    String? applianceId,
+    DateTime? serviceDate,
+    String? description,
+    String? serviceType,
+    double? cost,
+    String? serviceProvider,
+    DateTime? createdAt,
+  }) {
+    return MaintenanceRecord(
+      id: id ?? this.id,
+      applianceId: applianceId ?? this.applianceId,
+      serviceDate: serviceDate ?? this.serviceDate,
+      description: description ?? serviceType ?? this.description,
+      cost: cost ?? this.cost,
+      serviceProvider: serviceProvider ?? this.serviceProvider,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}

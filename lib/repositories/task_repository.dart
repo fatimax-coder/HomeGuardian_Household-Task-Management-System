@@ -52,10 +52,9 @@ class TaskRepository implements ITaskRepository {
 
   @override
   Future<void> toggleTaskStatus(String taskId, bool isCompleted) async {
-    final user = _service.client.auth.currentUser;
     await _service.client.from('tasks').update({
-      'is_completed': isCompleted,
-      'completed_by': isCompleted ? user?.id : null,
+      'status': isCompleted ? 'completed' : 'pending',
+      'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', taskId);
   }
 
@@ -64,4 +63,3 @@ class TaskRepository implements ITaskRepository {
     await _service.client.from('tasks').delete().eq('id', taskId);
   }
 }
-

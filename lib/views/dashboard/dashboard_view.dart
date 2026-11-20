@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_colors.dart';
 import '../../config/app_routes.dart';
@@ -94,153 +95,257 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // User Greeting & Household Status Card
-            Card(
-              color: AppColors.sand,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.home_outlined,
-                        size: 32,
-                        color: AppColors.terracotta,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            currentProfile != null
-                                ? 'Welcome, ${currentProfile.fullName}'
-                                : 'My Household',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.darkBrown,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            activeHousehold != null
-                                ? 'Active Household: ${activeHousehold.name}'
-                                : 'No household connected yet',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Setup Household CTA Banner if none active
-            if (activeHousehold == null) ...[
+      body: RefreshIndicator(
+        color: AppColors.terracotta,
+        onRefresh: () async {
+          await householdController.fetchHouseholds();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User Greeting Banner
               Card(
-                color: AppColors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: AppColors.sand, width: 1.5),
-                ),
+                color: AppColors.sand,
                 child: Padding(
-                  padding: const EdgeInsets.all(18.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: AppColors.terracotta),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Create or join a household to start managing appliances and tasks.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.home_outlined,
+                          size: 30,
+                          color: AppColors.terracotta,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              currentProfile != null
+                                  ? 'Welcome, ${currentProfile.fullName}'
+                                  : 'Welcome to HomeGuardian',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkBrown,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              currentProfile?.email ??
+                                  'Smart Household Management',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, AppRoutes.household),
-                        child: const Text('Setup', style: TextStyle(fontSize: 13)),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
+              const SizedBox(height: 18),
 
-            // Quick Navigation Hub
-            const Text(
-              'Quick Access',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkBrown,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 1.25,
-              children: [
-                _buildHubCard(
-                  context,
-                  title: 'Tasks',
-                  subtitle: 'Chores & deadlines',
-                  icon: Icons.check_circle_outline,
-                  route: AppRoutes.tasks,
+              // Active Household Status or Onboarding Call-to-Action
+              if (activeHousehold == null) ...[
+                Card(
+                  color: AppColors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: AppColors.sand, width: 1.5),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                color: AppColors.terracotta, size: 24),
+                            SizedBox(width: 10),
+                            Text(
+                              'No Household Connected',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkBrown,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Create your household or join your family using a 6-character invite code.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.add_home_outlined, size: 18),
+                          label: const Text('Create or Join Household'),
+                          onPressed: () =>
+                              Navigator.pushNamed(context, AppRoutes.household),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                _buildHubCard(
-                  context,
-                  title: 'Appliances',
-                  subtitle: 'Warranties & service',
-                  icon: Icons.kitchen_outlined,
-                  route: AppRoutes.appliances,
-                ),
-                _buildHubCard(
-                  context,
-                  title: 'Reminders',
-                  subtitle: 'Bills & alerts',
-                  icon: Icons.alarm,
-                  route: AppRoutes.reminders,
-                ),
-                _buildHubCard(
-                  context,
-                  title: 'Members',
-                  subtitle: 'Family & roles',
-                  icon: Icons.family_restroom,
-                  route: AppRoutes.members,
+              ] else ...[
+                Card(
+                  color: AppColors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: AppColors.sand, width: 1.5),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    activeHousehold.name,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.darkBrown,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              householdController.isCurrentAdmin
+                                                  ? AppColors.terracotta
+                                                  : AppColors.sand,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          householdController.currentUserRole,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: householdController
+                                                    .isCurrentAdmin
+                                                ? AppColors.white
+                                                : AppColors.darkBrown,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${householdController.totalMembersCount} member${householdController.totalMembersCount == 1 ? '' : 's'}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Quick copy invite code button
+                            IconButton(
+                              icon: const Icon(Icons.share_outlined,
+                                  color: AppColors.terracotta),
+                              tooltip: 'Share Invite Code',
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(
+                                    text: activeHousehold.inviteCode));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Invite code (${activeHousehold.inviteCode}) copied to clipboard!'),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
-            ),
-          ],
+              const SizedBox(height: 24),
+
+              // Quick Navigation Hub
+              const Text(
+                'Quick Access',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkBrown,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 1.25,
+                children: [
+                  _buildHubCard(
+                    context,
+                    title: 'Tasks',
+                    subtitle: 'Chores & deadlines',
+                    icon: Icons.check_circle_outline,
+                    route: AppRoutes.tasks,
+                  ),
+                  _buildHubCard(
+                    context,
+                    title: 'Appliances',
+                    subtitle: 'Warranties & service',
+                    icon: Icons.kitchen_outlined,
+                    route: AppRoutes.appliances,
+                  ),
+                  _buildHubCard(
+                    context,
+                    title: 'Reminders',
+                    subtitle: 'Bills & alerts',
+                    icon: Icons.alarm,
+                    route: AppRoutes.reminders,
+                  ),
+                  _buildHubCard(
+                    context,
+                    title: 'Members',
+                    subtitle: 'Family & roles',
+                    icon: Icons.family_restroom,
+                    route: AppRoutes.members,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

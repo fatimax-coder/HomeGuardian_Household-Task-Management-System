@@ -12,23 +12,35 @@ class TaskController extends BaseController {
   List<Task> _tasks = [];
   TaskSortStrategy _sortStrategy = SortByDueDateStrategy();
   String _statusFilter = 'all'; // 'all', 'pending', 'completed'
+  String _priorityFilter = 'all'; // 'all', 'high', 'medium', 'low'
+  String _searchQuery = '';
 
   TaskController([ITaskRepository? repository])
       : _repository = repository ?? TaskRepository();
 
   TaskSortStrategy get sortStrategy => _sortStrategy;
   String get statusFilter => _statusFilter;
+  String get priorityFilter => _priorityFilter;
+  String get searchQuery => _searchQuery;
 
-  /// Returns tasks sorted according to the active Strategy
+  /// Returns tasks filtered by status, priority, and search query, sorted by active Strategy
   List<Task> get tasks {
-    List<Task> filtered;
-    if (_statusFilter == 'pending') {
-      filtered = _tasks.where((t) => !t.isCompleted).toList();
-    } else if (_statusFilter == 'completed') {
-      filtered = _tasks.where((t) => t.isCompleted).toList();
-    } else {
-      filtered = List.from(_tasks);
-    }
+    List<Task> filtered = _tasks.where((t) {
+      final matchesStatus = _statusFilter == 'all' ||
+          (_statusFilter == 'pending' && !t.isCompleted) ||
+          (_statusFilter == 'completed' && t.isCompleted);
+
+      final matchesPriority = _priorityFilter == 'all' ||
+          t.priority.toLowerCase() == _priorityFilter;
+
+      final query = _searchQuery.trim().toLowerCase();
+      final matchesQuery = query.isEmpty ||
+          t.title.toLowerCase().contains(query) ||
+          (t.description?.toLowerCase().contains(query) ?? false);
+
+      return matchesStatus && matchesPriority && matchesQuery;
+    }).toList();
+
     return _sortStrategy.sort(filtered);
   }
 
@@ -37,7 +49,7 @@ class TaskController extends BaseController {
   int get totalTasksCount => _tasks.length;
 
   int get pendingTasksCount =>
-      _tasks.where((t) => t.status == 'pending').length;
+      _tasks.where((t) => !t.isCompleted).length;
 
   int get inProgressTasksCount =>
       _tasks.where((t) => t.status == 'in_progress').length;
@@ -56,6 +68,23 @@ class TaskController extends BaseController {
 
   void setStatusFilter(String filter) {
     _statusFilter = filter;
+    notifyListeners();
+  }
+
+  void setPriorityFilter(String priority) {
+    _priorityFilter = priority;
+    notifyListeners();
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _statusFilter = 'all';
+    _priorityFilter = 'all';
+    _searchQuery = '';
     notifyListeners();
   }
 

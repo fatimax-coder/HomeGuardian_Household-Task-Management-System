@@ -10,7 +10,7 @@ import '../../widgets/app_illustration.dart';
 import 'task_form_view.dart';
 
 /// Screen: TaskListView
-/// Displays tasks, supports status filtering, Strategy sorting, completion toggle, and CRUD
+/// Displays tasks, supports search, status & priority filtering, Strategy sorting, and CRUD
 class TaskListView extends StatefulWidget {
   final bool isTab;
 
@@ -21,15 +21,25 @@ class TaskListView extends StatefulWidget {
 }
 
 class _TaskListViewState extends State<TaskListView> {
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final taskController = context.read<TaskController>();
+      _searchController.text = taskController.searchQuery;
       final household = context.read<HouseholdController>().selectedHousehold;
       if (household != null) {
-        context.read<TaskController>().fetchTasks(household.id);
+        taskController.fetchTasks(household.id);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _showSortMenu(BuildContext context) {
@@ -181,6 +191,9 @@ class _TaskListViewState extends State<TaskListView> {
     final activeHousehold = householdController.selectedHousehold;
     final tasks = taskController.tasks;
     final membersMap = {for (var m in householdController.members) m.id: m.displayName};
+    final hasActiveFilters = taskController.statusFilter != 'all' ||
+        taskController.priorityFilter != 'all' ||
+        taskController.searchQuery.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -254,31 +267,135 @@ class _TaskListViewState extends State<TaskListView> {
             )
           : Column(
               children: [
-                // Filter Tabs Bar (All, Pending, Completed)
+                // Search & Filter Controls Bar
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
                   color: AppColors.sand.withValues(alpha: 0.35),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFilterChip(
-                        label: 'All (${taskController.totalTasksCount})',
-                        filter: 'all',
-                        current: taskController.statusFilter,
-                        onTap: () => taskController.setStatusFilter('all'),
+                      // Live Search Input
+                      TextField(
+                        controller: _searchController,
+                        onChanged: taskController.setSearchQuery,
+                        decoration: InputDecoration(
+                          hintText: 'Search tasks by title or description...',
+                          hintStyle: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 20,
+                            color: AppColors.brown,
+                          ),
+                          suffixIcon: taskController.searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    taskController.setSearchQuery('');
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: AppColors.white,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.sand),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.sand),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                const BorderSide(color: AppColors.terracotta),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                        label: 'Pending (${taskController.pendingTasksCount})',
-                        filter: 'pending',
-                        current: taskController.statusFilter,
-                        onTap: () => taskController.setStatusFilter('pending'),
+                      const SizedBox(height: 10),
+
+                      // Status Filter Tabs (All, Pending, Done)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildFilterChip(
+                              label: 'All (${taskController.totalTasksCount})',
+                              filter: 'all',
+                              current: taskController.statusFilter,
+                              onTap: () => taskController.setStatusFilter('all'),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              label: 'Pending (${taskController.pendingTasksCount})',
+                              filter: 'pending',
+                              current: taskController.statusFilter,
+                              onTap: () =>
+                                  taskController.setStatusFilter('pending'),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              label: 'Done (${taskController.completedTasksCount})',
+                              filter: 'completed',
+                              current: taskController.statusFilter,
+                              onTap: () =>
+                                  taskController.setStatusFilter('completed'),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                        label: 'Done (${taskController.completedTasksCount})',
-                        filter: 'completed',
-                        current: taskController.statusFilter,
-                        onTap: () => taskController.setStatusFilter('completed'),
+                      const SizedBox(height: 8),
+
+                      // Priority Filter Chips
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildPriorityChip(
+                              label: 'All Priorities',
+                              priority: 'all',
+                              current: taskController.priorityFilter,
+                              onTap: () =>
+                                  taskController.setPriorityFilter('all'),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildPriorityChip(
+                              label: 'High (${taskController.highPriorityCount})',
+                              priority: 'high',
+                              current: taskController.priorityFilter,
+                              activeColor: AppColors.error,
+                              onTap: () =>
+                                  taskController.setPriorityFilter('high'),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildPriorityChip(
+                              label:
+                                  'Medium (${taskController.mediumPriorityCount})',
+                              priority: 'medium',
+                              current: taskController.priorityFilter,
+                              activeColor: AppColors.terracotta,
+                              onTap: () =>
+                                  taskController.setPriorityFilter('medium'),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildPriorityChip(
+                              label: 'Low (${taskController.lowPriorityCount})',
+                              priority: 'low',
+                              current: taskController.priorityFilter,
+                              activeColor: AppColors.brown,
+                              onTap: () =>
+                                  taskController.setPriorityFilter('low'),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -298,8 +415,8 @@ class _TaskListViewState extends State<TaskListView> {
                                   AppIllustration.emptyTasks(size: 80),
                                   const SizedBox(height: 12),
                                   Text(
-                                    taskController.statusFilter == 'completed'
-                                        ? 'No completed tasks yet.'
+                                    hasActiveFilters
+                                        ? 'No matching tasks found.'
                                         : 'No tasks scheduled!',
                                     style: const TextStyle(
                                       fontSize: 16,
@@ -308,12 +425,23 @@ class _TaskListViewState extends State<TaskListView> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  const Text(
-                                    'Tap "+ New Task" below to assign chores.',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary),
-                                  ),
+                                  if (hasActiveFilters)
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.filter_alt_off,
+                                          size: 18),
+                                      label: const Text('Clear Filters'),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        taskController.clearFilters();
+                                      },
+                                    )
+                                  else
+                                    const Text(
+                                      'Tap "+ New Task" below to assign chores.',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary),
+                                    ),
                                 ],
                               ),
                             )
@@ -470,7 +598,8 @@ class _TaskListViewState extends State<TaskListView> {
                                                                 .withValues(
                                                                     alpha: 0.5),
                                                         borderRadius:
-                                                          BorderRadius.circular(6),
+                                                            BorderRadius.circular(
+                                                                6),
                                                       ),
                                                       child: Row(
                                                         mainAxisSize:
@@ -633,6 +762,38 @@ class _TaskListViewState extends State<TaskListView> {
             fontSize: 12,
             fontWeight: FontWeight.bold,
             color: isSelected ? AppColors.white : AppColors.darkBrown,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriorityChip({
+    required String label,
+    required String priority,
+    required String current,
+    required VoidCallback onTap,
+    Color activeColor = AppColors.brown,
+  }) {
+    final isSelected = priority == current;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor : AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? activeColor : AppColors.sand,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? AppColors.white : AppColors.textSecondary,
           ),
         ),
       ),

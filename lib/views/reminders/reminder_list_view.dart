@@ -11,7 +11,7 @@ import '../../widgets/app_illustration.dart';
 
 /// Screen: ReminderListView
 /// Displays reminders, handles Strategy filtering (Active, Urgent, Warranty),
-/// dismissals, deletions, and adding reminders via ReminderFactory.
+/// live search, category filtering, quick overdue dismissal, and adding reminders.
 class ReminderListView extends StatefulWidget {
   final bool isTab;
 
@@ -22,15 +22,25 @@ class ReminderListView extends StatefulWidget {
 }
 
 class _ReminderListViewState extends State<ReminderListView> {
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final reminderController = context.read<ReminderController>();
+      _searchController.text = reminderController.searchQuery;
       final household = context.read<HouseholdController>().selectedHousehold;
       if (household != null) {
-        context.read<ReminderController>().fetchReminders(household.id);
+        reminderController.fetchReminders(household.id);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _showAddReminderDialog() {
@@ -242,6 +252,8 @@ class _ReminderListViewState extends State<ReminderListView> {
     final householdController = context.watch<HouseholdController>();
     final activeHousehold = householdController.selectedHousehold;
     final reminders = reminderController.reminders;
+    final hasActiveFilters = reminderController.typeFilter != null ||
+        reminderController.searchQuery.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -308,35 +320,200 @@ class _ReminderListViewState extends State<ReminderListView> {
             )
           : Column(
               children: [
-                // Filter Strategy Tabs (Active, Urgent, Warranty Only)
+                // Search, Strategy Tabs & Category Filter Bar
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
                   color: AppColors.sand.withValues(alpha: 0.35),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildStrategyTab(
-                        label: 'Active (${reminderController.activeCount})',
-                        strategyType: ActiveRemindersStrategy,
-                        onTap: () => reminderController
-                            .setFilterStrategy(ActiveRemindersStrategy()),
+                      TextField(
+                        controller: _searchController,
+                        onChanged: reminderController.setSearchQuery,
+                        decoration: InputDecoration(
+                          hintText: 'Search reminders by title or notes...',
+                          hintStyle: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 20,
+                            color: AppColors.brown,
+                          ),
+                          suffixIcon: reminderController.searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    reminderController.setSearchQuery('');
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: AppColors.white,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.sand),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.sand),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                const BorderSide(color: AppColors.terracotta),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      _buildStrategyTab(
-                        label: 'Urgent (${reminderController.urgentCount})',
-                        strategyType: UrgentRemindersStrategy,
-                        onTap: () => reminderController
-                            .setFilterStrategy(UrgentRemindersStrategy()),
+                      const SizedBox(height: 10),
+
+                      // Filter Strategy Tabs (Active, Urgent, Warranty Only)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildStrategyTab(
+                              label: 'Active (${reminderController.activeCount})',
+                              strategyType: ActiveRemindersStrategy,
+                              onTap: () => reminderController
+                                  .setFilterStrategy(ActiveRemindersStrategy()),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildStrategyTab(
+                              label: 'Urgent (${reminderController.urgentCount})',
+                              strategyType: UrgentRemindersStrategy,
+                              onTap: () => reminderController
+                                  .setFilterStrategy(UrgentRemindersStrategy()),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildStrategyTab(
+                              label: 'Warranty',
+                              strategyType: WarrantyRemindersStrategy,
+                              onTap: () => reminderController.setFilterStrategy(
+                                  WarrantyRemindersStrategy()),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      _buildStrategyTab(
-                        label: 'Warranty',
-                        strategyType: WarrantyRemindersStrategy,
-                        onTap: () => reminderController
-                            .setFilterStrategy(WarrantyRemindersStrategy()),
+                      const SizedBox(height: 8),
+
+                      // Category Type Filter Chips
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildTypeChip(
+                              label: 'All Types',
+                              type: null,
+                              current: reminderController.typeFilter,
+                              onTap: () => reminderController.setTypeFilter(null),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildTypeChip(
+                              label: 'Bills',
+                              type: ReminderType.bill,
+                              current: reminderController.typeFilter,
+                              activeColor: AppColors.terracotta,
+                              onTap: () => reminderController
+                                  .setTypeFilter(ReminderType.bill),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildTypeChip(
+                              label: 'Maintenance',
+                              type: ReminderType.maintenance,
+                              current: reminderController.typeFilter,
+                              activeColor: AppColors.brown,
+                              onTap: () => reminderController
+                                  .setTypeFilter(ReminderType.maintenance),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildTypeChip(
+                              label: 'Warranty',
+                              type: ReminderType.warranty,
+                              current: reminderController.typeFilter,
+                              activeColor: AppColors.success,
+                              onTap: () => reminderController
+                                  .setTypeFilter(ReminderType.warranty),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildTypeChip(
+                              label: 'Tasks',
+                              type: ReminderType.task,
+                              current: reminderController.typeFilter,
+                              activeColor: AppColors.darkBrown,
+                              onTap: () => reminderController
+                                  .setTypeFilter(ReminderType.task),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
+
+                // Quick-Action Banner for Overdue Reminders
+                if (reminderController.urgentCount > 0)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: AppColors.error, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${reminderController.urgentCount} overdue reminder(s)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            minimumSize: const Size(0, 30),
+                          ),
+                          onPressed: () async {
+                            final count =
+                                await reminderController.dismissAllOverdue();
+                            if (count > 0 && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Dismissed $count overdue reminder(s).'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text(
+                            'Dismiss All',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Reminders List
                 Expanded(
@@ -351,21 +528,34 @@ class _ReminderListViewState extends State<ReminderListView> {
                                 children: [
                                   AppIllustration.emptyReminders(size: 80),
                                   const SizedBox(height: 12),
-                                  const Text(
-                                    'No Reminders in This View',
-                                    style: TextStyle(
+                                  Text(
+                                    hasActiveFilters
+                                        ? 'No Matching Reminders'
+                                        : 'No Reminders in This View',
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.darkBrown,
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  const Text(
-                                    'Tap "+ New Reminder" to schedule bills, maintenance or tasks.',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary),
-                                  ),
+                                  if (hasActiveFilters)
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.filter_alt_off,
+                                          size: 18),
+                                      label: const Text('Clear Filters'),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        reminderController.clearFilters();
+                                      },
+                                    )
+                                  else
+                                    const Text(
+                                      'Tap "+ New Reminder" to schedule bills, maintenance or tasks.',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary),
+                                    ),
                                 ],
                               ),
                             )
@@ -401,7 +591,8 @@ class _ReminderListViewState extends State<ReminderListView> {
                                         Container(
                                           padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            color: typeColor.withValues(alpha: 0.12),
+                                            color:
+                                                typeColor.withValues(alpha: 0.12),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
@@ -427,9 +618,11 @@ class _ReminderListViewState extends State<ReminderListView> {
                                                         fontSize: 15,
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color: reminder.isDismissed
+                                                        color: reminder
+                                                                .isDismissed
                                                             ? AppColors.textMuted
-                                                            : AppColors.darkBrown,
+                                                            : AppColors
+                                                                .darkBrown,
                                                         decoration: reminder
                                                                 .isDismissed
                                                             ? TextDecoration
@@ -446,7 +639,8 @@ class _ReminderListViewState extends State<ReminderListView> {
                                                           vertical: 2),
                                                       decoration: BoxDecoration(
                                                         color: AppColors.error
-                                                            .withValues(alpha: 0.15),
+                                                            .withValues(
+                                                                alpha: 0.15),
                                                         borderRadius:
                                                             BorderRadius.circular(
                                                                 4),
@@ -487,7 +681,8 @@ class _ReminderListViewState extends State<ReminderListView> {
                                                     size: 12,
                                                     color: isOverdue
                                                         ? AppColors.error
-                                                        : AppColors.textSecondary,
+                                                        : AppColors
+                                                            .textSecondary,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
@@ -578,6 +773,38 @@ class _ReminderListViewState extends State<ReminderListView> {
             fontSize: 12,
             fontWeight: FontWeight.bold,
             color: isSelected ? AppColors.white : AppColors.darkBrown,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeChip({
+    required String label,
+    required ReminderType? type,
+    required ReminderType? current,
+    required VoidCallback onTap,
+    Color activeColor = AppColors.brown,
+  }) {
+    final isSelected = type == current;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor : AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? activeColor : AppColors.sand,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? AppColors.white : AppColors.textSecondary,
           ),
         ),
       ),

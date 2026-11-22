@@ -10,14 +10,29 @@ class ReminderController extends BaseController {
 
   List<Reminder> _reminders = [];
   ReminderFilterStrategy _filterStrategy = ActiveRemindersStrategy();
+  ReminderType? _typeFilter; // null = all types
+  String _searchQuery = '';
 
   ReminderController([IReminderRepository? repository])
       : _repository = repository ?? ReminderRepository();
 
   ReminderFilterStrategy get filterStrategy => _filterStrategy;
+  ReminderType? get typeFilter => _typeFilter;
+  String get searchQuery => _searchQuery;
 
-  /// Returns reminders filtered by the current Strategy
-  List<Reminder> get reminders => _filterStrategy.filter(_reminders);
+  /// Returns reminders filtered by active Strategy, category type, and search query
+  List<Reminder> get reminders {
+    final strategyFiltered = _filterStrategy.filter(_reminders);
+    final query = _searchQuery.trim().toLowerCase();
+
+    return strategyFiltered.where((r) {
+      final matchesType = _typeFilter == null || r.type == _typeFilter;
+      final matchesQuery = query.isEmpty ||
+          r.title.toLowerCase().contains(query) ||
+          (r.description?.toLowerCase().contains(query) ?? false);
+      return matchesType && matchesQuery;
+    }).toList();
+  }
 
   List<Reminder> get allRawReminders => List.unmodifiable(_reminders);
 
@@ -31,6 +46,22 @@ class ReminderController extends BaseController {
 
   void setFilterStrategy(ReminderFilterStrategy strategy) {
     _filterStrategy = strategy;
+    notifyListeners();
+  }
+
+  void setTypeFilter(ReminderType? type) {
+    _typeFilter = type;
+    notifyListeners();
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _typeFilter = null;
+    _searchQuery = '';
     notifyListeners();
   }
 
@@ -72,6 +103,33 @@ class ReminderController extends BaseController {
     } catch (e) {
       setError(e.toString());
     }
+  }
+
+  /// Quick action: dismisses all currently overdue active reminders
+  Future<int> dismissAllOverdue() async {
+    final overdueIds = _reminders
+        .where((r) => !r.isDismissed && r.isOverdue)
+        .map((r) => r.id)
+        .toList();
+
+    int dismissedCount = 0;
+    for (final id in overdueIds) {
+      try {
+        await _repository.dismissReminder(id);
+        final index = _reminders.indexWhere((r) => r.id == id);
+        if (index != -1) {
+          _reminders[index] = _reminders[index].copyWith(isDismissed: true);
+          dismissedCount++;
+        }
+      } catch (e) {
+        setError(e.toString());
+      }
+    }
+
+    if (dismissedCount > 0) {
+      notifyListeners();
+    }
+    return dismissedCount;
   }
 
   Future<bool> deleteReminder(String reminderId) async {

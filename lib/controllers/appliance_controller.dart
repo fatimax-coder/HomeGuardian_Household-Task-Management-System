@@ -11,15 +11,71 @@ class ApplianceController extends BaseController {
   List<Appliance> _appliances = [];
   Appliance? _selectedAppliance;
   final Map<String, List<MaintenanceRecord>> _recordsByAppliance = {};
+  String _warrantyFilter = 'all'; // 'all', 'active', 'expiring', 'expired'
+  String _searchQuery = '';
 
   ApplianceController([IApplianceRepository? repository])
       : _repository = repository ?? ApplianceRepository();
 
-  List<Appliance> get appliances => _appliances;
+  String get warrantyFilter => _warrantyFilter;
+  String get searchQuery => _searchQuery;
+
+  /// Returns appliances filtered by warranty status and search query
+  List<Appliance> get appliances {
+    return _appliances.where((a) {
+      final isExpired = a.warrantyExpiryDate != null && !a.isWarrantyActive;
+      final isExpiringSoon =
+          a.isWarrantyActive && a.daysUntilWarrantyExpires <= 30;
+      final isActive = a.isWarrantyActive && a.daysUntilWarrantyExpires > 30;
+
+      final matchesWarranty = _warrantyFilter == 'all' ||
+          (_warrantyFilter == 'active' && isActive) ||
+          (_warrantyFilter == 'expiring' && isExpiringSoon) ||
+          (_warrantyFilter == 'expired' && isExpired);
+
+      final query = _searchQuery.trim().toLowerCase();
+      final matchesQuery = query.isEmpty ||
+          a.name.toLowerCase().contains(query) ||
+          (a.brand?.toLowerCase().contains(query) ?? false) ||
+          (a.model?.toLowerCase().contains(query) ?? false);
+
+      return matchesWarranty && matchesQuery;
+    }).toList();
+  }
+
+  List<Appliance> get allRawAppliances => List.unmodifiable(_appliances);
 
   Appliance? get selectedAppliance => _selectedAppliance;
 
   int get totalAppliancesCount => _appliances.length;
+
+  int get activeWarrantiesCount => _appliances
+      .where((a) => a.isWarrantyActive && a.daysUntilWarrantyExpires > 30)
+      .length;
+
+  int get expiringWarrantiesCount => _appliances
+      .where((a) => a.isWarrantyActive && a.daysUntilWarrantyExpires <= 30)
+      .length;
+
+  int get expiredWarrantiesCount => _appliances
+      .where((a) => a.warrantyExpiryDate != null && !a.isWarrantyActive)
+      .length;
+
+  void setWarrantyFilter(String filter) {
+    _warrantyFilter = filter;
+    notifyListeners();
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _warrantyFilter = 'all';
+    _searchQuery = '';
+    notifyListeners();
+  }
 
   List<MaintenanceRecord> getRecords(String applianceId) =>
       _recordsByAppliance[applianceId] ?? [];
@@ -43,13 +99,13 @@ class ApplianceController extends BaseController {
 
     for (int i = 5; i >= 0; i--) {
       final d = DateTime(now.year, now.month - i, 1);
-      final key = '${monthNames[d.month - 1]} ${d.year.toString().substring(2)}';
+      final key = '${monthNames[d.month - 1]}${d.year.toString().substring(2)}';
       monthTotals[key] = 0.0;
     }
 
     for (final r in allMaintenanceRecords) {
       final key =
-          '${monthNames[r.serviceDate.month - 1]} ${r.serviceDate.year.toString().substring(2)}';
+          '${monthNames[r.serviceDate.month - 1]}${r.serviceDate.year.toString().substring(2)}';
       if (monthTotals.containsKey(key)) {
         monthTotals[key] = (monthTotals[key] ?? 0.0) + r.cost;
       }
@@ -57,9 +113,6 @@ class ApplianceController extends BaseController {
 
     return monthTotals;
   }
-
-  int get expiringWarrantiesCount =>
-      _appliances.where((a) => a.isWarrantyActive && a.daysUntilWarrantyExpires <= 30).length;
 
   void selectAppliance(Appliance? appliance) {
     _selectedAppliance = appliance;

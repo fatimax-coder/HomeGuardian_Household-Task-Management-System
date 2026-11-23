@@ -7,6 +7,7 @@ import '../../controllers/reminder_controller.dart';
 import '../../factories/reminder_factory.dart';
 import '../../models/appliance.dart';
 import '../../models/maintenance_record.dart';
+import '../../widgets/app_illustration.dart';
 
 /// Screen: MaintenanceFormView
 /// Logs a service or repair record for an appliance
@@ -157,9 +158,8 @@ class _MaintenanceFormViewState extends State<MaintenanceFormView> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.build_circle_outlined,
-                                color: AppColors.terracotta, size: 26),
-                            const SizedBox(width: 10),
+                            AppIllustration.maintenance(size: 38),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

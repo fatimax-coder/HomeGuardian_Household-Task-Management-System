@@ -83,8 +83,7 @@ class _ApplianceListViewState extends State<ApplianceListView> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.kitchen_outlined,
-                        size: 64, color: AppColors.brown),
+                    AppIllustration.emptyAppliances(size: 80),
                     const SizedBox(height: 16),
                     const Text(
                       'No Active Household',

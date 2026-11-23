@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_colors.dart';
 import '../../controllers/household_controller.dart';
 import '../../models/household_member.dart';
+import '../../widgets/app_illustration.dart';
 
 /// Screen: MembersView
 /// Lists all household members, displays roles, and provides Admin-only management
@@ -192,10 +193,29 @@ class _MembersViewState extends State<MembersView> {
             )
           : null,
       body: members.isEmpty
-          ? const Center(
-              child: Text(
-                'No members found in this household.',
-                style: TextStyle(color: AppColors.textSecondary),
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIllustration.family(size: 80),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No members found in this household.',
+                    style: TextStyle(
+                      color: AppColors.darkBrown,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Add family members or invite others with your code.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             )
           : ListView.separated(

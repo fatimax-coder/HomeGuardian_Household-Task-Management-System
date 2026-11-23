@@ -68,6 +68,12 @@ flutter:
   assets:
     - assets/illustrations/
     - assets/images/appliances/
+    - assets/images/banner/
+    - assets/images/household/
+    - assets/images/maintenance/
+    - assets/images/tasks/
+    - assets/images/reminders/
+    - assets/images/promotions/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

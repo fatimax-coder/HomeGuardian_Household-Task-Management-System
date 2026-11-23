@@ -1,10 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:home_guardian/config/app_routes.dart';
 import 'package:home_guardian/main.dart';
 
 void main() {
   testWidgets('HomeGuardianApp mounts AuthGate and renders LoginView for unauthenticated users',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const HomeGuardianApp());
+    await tester.pumpWidget(const HomeGuardianApp(initialRoute: AppRoutes.authGate));
     await tester.pumpAndSettle();
 
     // Verify Login elements are rendered by default when no session exists

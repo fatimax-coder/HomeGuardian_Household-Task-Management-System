@@ -3,6 +3,7 @@ import '../views/auth/auth_gate.dart';
 import '../views/auth/login_view.dart';
 import '../views/auth/signup_view.dart';
 import '../views/main_scaffold_view.dart';
+import '../views/splash/splash_view.dart';
 import '../views/tasks/task_list_view.dart';
 import '../views/tasks/task_form_view.dart';
 import '../views/appliances/appliance_list_view.dart';
@@ -18,6 +19,8 @@ class AppRoutes {
   AppRoutes._();
 
   static const String initial = '/';
+  static const String splash = '/splash';
+  static const String authGate = '/auth-gate';
   static const String login = '/login';
   static const String signup = '/signup';
   static const String main = '/main';
@@ -33,7 +36,9 @@ class AppRoutes {
   static const String profile = '/profile';
 
   static Map<String, WidgetBuilder> get routes => {
-        initial: (context) => const AuthGate(),
+        initial: (context) => const SplashView(),
+        splash: (context) => const SplashView(),
+        authGate: (context) => const AuthGate(),
         login: (context) => const LoginView(),
         signup: (context) => const SignupView(),
         main: (context) => const MainScaffoldView(),

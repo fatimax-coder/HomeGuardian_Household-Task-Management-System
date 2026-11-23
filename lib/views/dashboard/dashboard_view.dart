@@ -157,7 +157,7 @@ class _DashboardViewState extends State<DashboardView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AppIllustration.homeBanner(height: 125),
+                        AppIllustration.homeBanner(height: 155),
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
@@ -223,14 +223,9 @@ class _DashboardViewState extends State<DashboardView> {
                         padding: const EdgeInsets.all(18.0),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors.sand.withValues(alpha: 0.4),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.info_outline,
-                                  color: AppColors.terracotta, size: 24),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: AppIllustration.family(size: 40),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -280,19 +275,8 @@ class _DashboardViewState extends State<DashboardView> {
                         padding: const EdgeInsets.all(16.0),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors.sand.withValues(alpha: 0.35),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.home_work_outlined,
-                                color: AppColors.terracotta,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
+                            AppIllustration.family(size: 46),
+                            const SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

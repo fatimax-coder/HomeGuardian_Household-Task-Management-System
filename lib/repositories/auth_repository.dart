@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_constants.dart';
 import '../models/user_profile.dart';
 import '../services/supabase_service.dart';
 
@@ -38,6 +39,15 @@ class AuthRepository implements IAuthRepository {
   AuthRepository([SupabaseService? service])
       : _service = service ?? SupabaseService.instance;
 
+  Future<void> _ensureInitialized() async {
+    if (!_service.isInitialized) {
+      await _service.initialize(
+        url: AppConstants.supabaseUrl,
+        publishableKey: AppConstants.supabasePublishableKey,
+      );
+    }
+  }
+
   @override
   bool get isAuthenticated {
     if (!_service.isInitialized) return false;
@@ -64,6 +74,7 @@ class AuthRepository implements IAuthRepository {
 
   @override
   Future<UserProfile?> getCurrentProfile() async {
+    await _ensureInitialized();
     if (!isAuthenticated) return null;
     final user = _service.client.auth.currentUser;
     if (user == null) return null;
@@ -102,6 +113,12 @@ class AuthRepository implements IAuthRepository {
     required String email,
     required String password,
   }) async {
+    await _ensureInitialized();
+    if (!_service.isInitialized) {
+      throw const AuthException(
+        'Supabase connection is not initialized. Please verify your credentials and network.',
+      );
+    }
     try {
       final response = await _service.client.auth.signInWithPassword(
         email: email.trim(),
@@ -133,6 +150,12 @@ class AuthRepository implements IAuthRepository {
     required String password,
     required String fullName,
   }) async {
+    await _ensureInitialized();
+    if (!_service.isInitialized) {
+      throw const AuthException(
+        'Supabase connection is not initialized. Please verify your credentials and network.',
+      );
+    }
     try {
       final response = await _service.client.auth.signUp(
         email: email.trim(),

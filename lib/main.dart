@@ -28,7 +28,8 @@ Future<void> main() async {
 
 /// Root Application Widget configured with MultiProvider & Warm Minimalist Theme
 class HomeGuardianApp extends StatelessWidget {
-  const HomeGuardianApp({super.key});
+  final String? initialRoute;
+  const HomeGuardianApp({super.key, this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +46,7 @@ class HomeGuardianApp extends StatelessWidget {
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        initialRoute: AppRoutes.initial,
+        initialRoute: initialRoute ?? AppRoutes.initial,
         routes: AppRoutes.routes,
       ),
     );

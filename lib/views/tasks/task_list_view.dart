@@ -224,8 +224,7 @@ class _TaskListViewState extends State<TaskListView> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.home_work_outlined,
-                        size: 64, color: AppColors.brown),
+                    AppIllustration.emptyTasks(size: 80),
                     const SizedBox(height: 16),
                     const Text(
                       'No Active Household',

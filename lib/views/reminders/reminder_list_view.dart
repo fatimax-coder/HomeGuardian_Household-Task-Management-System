@@ -278,8 +278,7 @@ class _ReminderListViewState extends State<ReminderListView> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.notifications_none,
-                        size: 64, color: AppColors.brown),
+                    AppIllustration.emptyReminders(size: 80),
                     const SizedBox(height: 16),
                     const Text(
                       'No Active Household',

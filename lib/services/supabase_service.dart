@@ -20,6 +20,7 @@ class SupabaseService {
     // Return the global Supabase client if initialized
     try {
       _client = Supabase.instance.client;
+      _isInitialized = true;
       return _client!;
     } catch (_) {
       throw StateError(
@@ -28,15 +29,33 @@ class SupabaseService {
     }
   }
 
-  /// Initialize the Supabase connection safely.
+  /// Initialize the Supabase connection safely, preventing duplicate initializations.
   Future<void> initialize({
     required String url,
     required String publishableKey,
   }) async {
-    if (_isInitialized) return;
+    // 1. If this service instance already has an active client, avoid duplicate initialization
+    if (_isInitialized && _client != null) {
+      debugPrint('[SupabaseService] Already initialized with active client.');
+      return;
+    }
+
+    // 2. Check if global Supabase.instance is already initialized (e.g. across hot restarts)
+    try {
+      final existingClient = Supabase.instance.client;
+      _client = existingClient;
+      _isInitialized = true;
+      debugPrint('[SupabaseService] Attached to existing global Supabase client.');
+      return;
+    } catch (_) {
+      // Global Supabase.instance is not yet initialized; proceed with initialization
+    }
 
     // Guard against unconfigured placeholder credentials during local dev / test
-    if (url.contains('YOUR_SUPABASE') || publishableKey.contains('YOUR_SUPABASE')) {
+    if (url.isEmpty ||
+        publishableKey.isEmpty ||
+        url.contains('YOUR_SUPABASE') ||
+        publishableKey.contains('YOUR_SUPABASE')) {
       _isInitialized = false;
       debugPrint('[SupabaseService] Awaiting active credentials. Running in local test mode.');
       return;
@@ -62,8 +81,15 @@ class SupabaseService {
       _isInitialized = true;
       debugPrint('[SupabaseService] Connected successfully to $cleanUrl');
     } catch (e) {
-      debugPrint('[SupabaseService] Initialization error: $e');
-      _isInitialized = false;
+      // Recover client if another concurrent call or hot restart already initialized it
+      try {
+        _client = Supabase.instance.client;
+        _isInitialized = true;
+        debugPrint('[SupabaseService] Recovered existing Supabase client after: $e');
+      } catch (_) {
+        debugPrint('[SupabaseService] Initialization error: $e');
+        _isInitialized = false;
+      }
     }
   }
 
